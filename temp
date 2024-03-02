@@ -1,0 +1,406 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import {generateMaze} from './maze.js'
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+const renderer = new THREE.WebGLRenderer();
+const controls = new OrbitControls( camera, renderer.domElement );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+
+
+
+function createBoxWithRoundedEdges( width, height, depth, radius, segments = 20, quadRadius = 0.00001 ) {
+	let shape = new THREE.Shape();
+
+	const startX = radius
+	const startY = radius
+	const endX = width - radius
+	const endY = height -radius
+
+    shape.moveTo(startX, startY + quadRadius);
+    shape.lineTo(startX, endY-quadRadius);
+	shape.quadraticCurveTo(startX, endY, startX + quadRadius, endY )
+	// shape.lineTo(endX/2, endY)
+	// shape.lineTo(endX/2, endY/2)
+	// shape.lineTo(endX - quadRadius, endY/2)
+	// shape.lineTo(endX - quadRadius, endY)
+	shape.lineTo(endX - quadRadius, endY)
+	shape.quadraticCurveTo(endX, endY, endX, endY - quadRadius)
+	shape.lineTo(endX, startY + quadRadius)
+	shape.quadraticCurveTo(endX, startY, endX - quadRadius, startY)
+	shape.lineTo(startX + quadRadius, startY)
+	shape.quadraticCurveTo(startX, startY, startX, startY + quadRadius)
+	
+	let geometry = new THREE.ExtrudeGeometry( shape, {
+	  depth: depth - radius * 2,
+	  bevelEnabled: true,
+	  bevelSegments: segments,
+	  steps: 1,
+	  bevelSize: radius,
+	  bevelThickness: radius,
+	  curveSegments: segments
+	});
+	geometry.center();
+	// geometry.boundingBox
+	return geometry;
+}
+function getIterationDetails(sideWalls, traversalInformation, planeIndex){
+	info = traversalInformation[faceIndex]
+	
+	let {wallIndex, reverseTraversal, vertical, reversePlaneIndex} = info
+	walls = sideWalls[wallIndex]	
+	
+	let startIndex = 0
+	let endIndex = 1;
+	let indices = [0,0]
+	let step = [0,0]
+	let count = 0
+	if(vertical){
+		if(reverseTraversal){
+			startIndex = walls.length-2
+			endIndex = 1;
+		}else{
+			startIndex = 1;
+			endIndex = walls.length-2
+		}
+		count = Math.abs(endIndex - startIndex)+1
+		indices[0] = startIndex;
+		indices[1] = reversePlaneIndex?walls[1].length -1- planeIndex:planeIndex
+		step[0] = startIndex < endIndex?2: -2
+	}else{
+		if(reverseTraversal){
+			startIndex = walls[0].length -1
+			endIndex = 0
+		}else{
+			startIndex = 0
+			endIndex = walls[0].length - 1
+		}
+		count = Math.abs(endIndex-startIndex)/2+1
+		indices[0] = reversePlaneIndex?walls.length-1 - 2*planeIndex:2*planeIndex
+		indices[1] = startIndex;
+		step[1] = startIndex < endIndex?1:-1
+	}
+	return {indices: indices, step: step, count: count}
+}
+function traverse(sideWalls, traversalInformation, planeIndex){
+	let {indices, step, count} = getIterationDetails(sideWalls, traversalInformation, planeIndex)
+	list = []
+	for(let i = 0; i < count; i++){
+		const row = indices[0]
+		const col = indices[1]
+		list.push(walls[row][col])
+
+		indices[0]+=step[0]
+		indices[1]+=step[1]
+	}
+	return list;
+
+}
+function isFirstRemoved(sideWalls, traversalInformations, i){
+	let {indices, step, count} = getIterationDetails(sideWalls, traversalInformations[i], planeIndex)
+	let wallIndex = traversalInformations[i].wallIndex
+
+	let firstWall = sideWalls[wallIndex][indices[0]][indices[1]]
+	return firstWall.isRemoved || firstWall.face!=wallIndex 
+	// let wallIndex = wallIndices[i]
+	// console.log(wallIndex)
+	// let numCells = sideWalls[Math.abs(wallIndex)][index].length
+	// let startIndex = wallIndex < 0? numCells - 1 : 0
+	// wallIndex = Math.abs(wallIndex)
+	// console.log(sideWalls[wallIndex])
+	// // return false
+	// return sideWalls[wallIndex][index][startIndex].isRemoved || sideWalls[wallIndex][index][startIndex].face!=wallIndex
+}
+function createMazeWallGeometry( width, height, depth, wallHeight, radius,distance_between_walls, segments = 20, quadRadius = 0.00000001, sideWalls, index, traversalInformations = null) {
+	let shape = new THREE.Shape();
+
+	const startX = radius
+	const startY = radius
+	const endX = width - radius
+	const endY = height -radius
+	
+	let currX = startX 
+	let currY = startY + quadRadius
+    shape.moveTo(startX, startY + quadRadius);
+	wallHeight+=0.0001
+
+	
+	let wallInside = [startX +wallHeight+0.0001, endY - wallHeight-0.0001, endX - wallHeight-0.0001, startY +wallHeight+0.0001]
+	let wallOutside = [startX, endY, endX,startY ]
+	let quadCurveFrom = [[startX, endY-quadRadius], [endX - quadRadius, endY], [endX, startY + quadRadius], [startX + quadRadius, startY]]
+	let corners = [[startX, endY], [endX, endY], [endX, startY], [startX, startY]]
+	let quadCurveTo = [[startX + quadRadius, endY], [endX, endY - quadRadius], [endX - quadRadius, startY], [startX, startY + quadRadius]]
+	let reversed = false
+	//index is index of plane
+	//i is index of face 
+	if(isFirstRemoved(sideWalls, wallIndices, 0)){
+
+		currX = startX + wallHeight
+		currY = startY +quadRadius + wallHeight
+
+		shape.moveTo(currX, currY)
+	}	
+	let currRemoved = false
+	let prevRemoved = false
+	let isSideExtended = [false, false, false, false]
+	for(let i = 0; i < 4; i++){
+		let {wallIndex, reverseTraversal, vertical} =  wallDetails[i]
+		
+		let numCells =vertical?sideWalls[wallIndex].length/2: sideWalls[wallIndex][index].length
+		let startIndex = reverseTraversal? numCells - 1 : 0
+		let endIndex = startIndex>0?0:numCells-1
+		wallIndex = Math.abs(wallIndex)
+
+		let walls = traverse(sideWalls, traversalInformations[i], index )
+		let count = Math.abs(endIndex - startIndex)+1 
+		
+		for(let j = 0; j < count; j++ ){
+			currRemoved = sideWalls[wallIndex][index][startIndex].isRemoved || sideWalls[wallIndex][index][startIndex].face!=wallIndex
+			// currRemoved = true
+			if(i ===0 && j===0) prevRemoved = currRemoved
+			if(j===0 && !prevRemoved && currRemoved){
+				if(reversed){
+					currX = wallInside[(i-1)%4]
+					currY = wallOutside[i]
+				}else{
+					currX = wallOutside[i]
+					currY = wallInside[(i-1)%4]
+				}
+			}
+			if(!currRemoved)isSideExtended[i] = true
+			if(prevRemoved!=currRemoved){
+				
+				shape.lineTo(currX, currY)
+				// console.log("LINE TO: "+currX +", "+currY)
+				// console.log(currX, currY)
+				if(currRemoved){
+					if(!reversed){
+						currX = wallInside[i]
+					}else{
+						currY = wallInside[i]
+					}
+				}else{
+					if(!reversed){
+						currX = wallOutside[i]
+					}else{
+						currY = wallOutside[i]
+					}
+				}
+				shape.lineTo(currX, currY)
+			}
+			prevRemoved = currRemoved
+			let distanceToAdd = i>=2?-distance_between_walls:distance_between_walls
+			if(reversed){
+				currX +=distanceToAdd
+			}else{
+				currY +=distanceToAdd
+			}
+			if(startIndex < endIndex)startIndex++
+			else startIndex--
+		}
+		const nextIndex = (i+1)%4;
+		const nextFirstRemoved = isFirstRemoved(sideWalls, wallIndices, nextIndex, index)
+		if(currRemoved){
+			
+			if(!reversed){
+				currX = wallInside[i]
+				currY = wallInside[nextIndex]
+			}else{
+				currX = wallInside[nextIndex]
+				currY = wallInside[i]
+
+			}
+			shape.lineTo(currX, currY)
+
+			// console.log("HELLo")
+			if(!nextFirstRemoved){
+				// console.log("NEXT NOT REMOVED")
+				if(!reversed){
+					currX = wallOutside[i]
+				}else{
+					currY = wallOutside[i]
+				}
+				shape.lineTo(currX, currY)
+				isSideExtended[i] = true
+				isSideExtended[nextIndex] = true
+			}
+			
+		}
+		if(!nextFirstRemoved ||  !currRemoved){
+
+			// console.log("NOT REMOVED")
+			// console.log(quadCurveFrom[i][0])
+			// console.log(quadCurveFrom[i])
+			if(i===3){
+				console.log("HELLO")
+			}
+			shape.lineTo(quadCurveFrom[i][0],	 quadCurveFrom[i][1]);
+			shape.quadraticCurveTo(corners[i][0], corners[i][1], quadCurveTo[i][0], quadCurveTo[i][1])
+			currX = quadCurveTo[i][0]
+			currY = quadCurveTo[i][1]
+			isSideExtended[i] = true
+			isSideExtended[nextIndex ]= true
+		}
+
+		reversed = !reversed
+		
+	}
+	//need to check if there is wall in the next face
+
+	
+	
+	let geometry = new THREE.ExtrudeGeometry( shape, {
+	  depth: depth - radius * 2,
+	  bevelEnabled: true ,
+	  bevelSegments: segments,
+	  steps: 1,
+	  bevelSize: radius,
+	  bevelThickness: radius,
+	  curveSegments: segments
+	});
+	// let center = new THREE.Vector3(0, 0, 0)
+	// geometry.computeBoundingBox()
+	// let size= new THREE.Vector3(0,0,0)
+	// geometry.boundingBox.getSize
+	// geometry.boundingBox.getSize(size)
+	// console.log(size)
+	// console.log(center	)
+	// geometry.translate(-center.x ,-center.y, -center.z)
+	// geometry.computeBoundingBox()
+	// geometry.boundingBox.getCenter(center)
+	// console.log(center)
+
+	// geometry.boundingBox.getCenter(center)
+	// console.log(center)
+	console.log(isSideExtended)
+
+	geometry.center();
+	// if(size.y < height){
+	// 	console.log(size.y + wallHeight, height)
+	// 	if(size.y + wallHeight*1.3 >=height){
+	// 		console.log("TRANSLATING")
+	// 		geometry.translate(0, wallHeight/2,0)
+	// 	}
+	// }
+
+	if(isSideExtended[0] ^ isSideExtended[2]){
+		geometry.translate((isSideExtended[0]?-1:1) * wallHeight/2, 0, 0)
+	}
+	if(isSideExtended[1] ^ isSideExtended[3]){
+		geometry.translate(0,(isSideExtended[1]?1:-1) * wallHeight/2, 0 )
+	}
+
+	return geometry;	
+}
+
+function createBaseCubeMesh( width, height, depth, radius = 0.1) {
+
+	// const material = new THREE.MeshStandardMaterial({wireframe:true})
+	const material = new THREE.MeshPhongMaterial( { color: 0x00ff00, shininess: 100 } );
+	const geometry = createBoxWithRoundedEdges( width, height, depth, radius,)
+	const mesh = new THREE.Mesh( geometry, material ) ;
+	return mesh
+}
+function createWallMesh( width, height, depth, wall_height, radius,distance_between_walls, sideWalls, index, wallIndices, wallStartRow) {
+	const geometry = createMazeWallGeometry( width, height, depth,wall_height, radius>0?depth:0	,distance_between_walls, 20, radius, sideWalls, index, wallIndices, wallStartRow)
+	const material = new THREE.MeshPhongMaterial( { color: 0xffff00, shininess: 100, side: THREE.DoubleSide } );
+	const mesh = new THREE.Mesh( geometry, material ) ;
+	return mesh
+}
+
+const height = 1, width = 1, depth = 1, radius = 0
+const wall_height = 0.1
+const wall_thickness = 0.01
+const cells_per_unit = 5
+
+const axesHelper = new THREE.AxesHelper( 10);
+scene.add( axesHelper );
+
+camera.position.z = 2
+
+scene.add( new THREE.GridHelper( 10, 10 ) );
+scene.add(new THREE.AmbientLight( 0xffffff, 0.6 ))
+const light = new THREE.PointLight( 0xffffff, 10, 100 );
+
+light.position.y = 5
+scene.add(light)
+
+function createMazeCubeGroup(width, height, depth, radius = 0.1, wall_height = 0.1, wall_thickness = 0.01, cells_per_unit = 5) {
+	const num_cells_depth = Math.floor(cells_per_unit * depth)	
+	const num_cells_width = Math.floor(cells_per_unit*width)
+	const num_cells_height = Math.floor(cells_per_unit*height)
+	
+	const result = generateMaze(num_cells_width,num_cells_height,num_cells_depth)
+	let {sideCells, sideWalls} = result
+	console.log(sideWalls)
+	const effective_depth = depth - 2 *radius;
+	// const effective_width = width - 2*radius
+	// const effective_height = height - 2*radius
+
+
+	const distance_between_walls = effective_depth/num_cells_depth
+	// const distance_between_walls_depth = effective_depth / num_cells_depth
+	// const distance_between_walls_width = effective_width / num_cells_width
+	// const distance_between_walls_height = effective_height / num_cells_height
+	const group = new THREE.Group()
+	const cube = createBaseCubeMesh(width, height, depth, radius)
+
+	group.add(cube)
+
+	let startZ = -depth/2 + radius + wall_thickness/2
+	const zWallOrder = [{wallIndex: 1, reverseTraversal: true, vertical: false}, {wallIndex: 5, reverseTraversal: false, vertical: false},{wallIndex: 3, reverseTraversal: true, vertical: false},{wallIndex: 2, reverseTraversal: true, vertical: false}]
+	const xWallOrder = [{wallIndex: 4, reverseTraversal: false, vertical: true}, {wallIndex: 5, reverseTraversal: true, vertical: true},{wallIndex: 0, reverseTraversal: false, vertical: true},{wallIndex: 2, reverseTraversal: false, vertical: true}]
+	
+	for(let i = 0; i <= num_cells_depth; i++){
+		
+		const wall = createWallMesh(width + wall_height*2, height + wall_height*2, wall_thickness,wall_height, radius*1.5,distance_between_walls, sideWalls, i, zWallOrder)	
+		wall.position.z = startZ
+		startZ += distance_between_walls
+		group.add(wall)
+	}
+	let startX = -width/2 + radius + wall_thickness/2
+	for(let i = 0; i <= num_cells_width; i++){
+	
+		const wall = createWallMesh(depth + wall_height*2, height + wall_height*2, wall_thickness,wall_height, radius*1.5, distance_between_walls, sideWalls, i, xWallOrder)	
+
+
+		wall.rotateY(Math.PI/2)
+		wall.position.x = startX	
+		group.add(wall)
+		startX += distance_between_walls
+	}
+
+	// let startY = -height/2 + radius + wall_thickness/2
+	// for(let i = 0; i <= num_cells_height; i++){
+	
+	// 	const wall = createWallMesh(width + wall_height*2, depth + wall_height*2, wall_thickness,wall_height,distance_between_walls,  radius*1.5, sideWalls, i)	
+
+
+	// 	wall.rotateX(Math.PI/2)
+	// 	wall.position.y = startY	
+	// 	group.add(wall)
+	// 	startY += distance_between_walls
+	// }
+
+	return group
+}
+
+
+controls.panSpeed = 5
+
+// mesh.rotateY(Math.PI/2)
+
+
+
+const maze = createMazeCubeGroup(width, height, depth, radius, wall_height, wall_thickness, cells_per_unit)
+scene.add(maze)
+
+function animate() {
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+	controls.update()
+}
+
+animate();
