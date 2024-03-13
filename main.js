@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import { createMazeCubeGroup } from './maze_model.js';
+import { generateMaze } from './maze.js';
+import { initializeInputHandler } from './input_handler.js';
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
 const controls = new OrbitControls( camera, renderer.domElement );
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
@@ -13,12 +16,7 @@ document.body.appendChild( renderer.domElement );
 
 
 
-const height = 9, width = 9, depth =9, radius = 0
-const wall_thickness = 0.01
-const cell_size = 0.1
-const wall_height = cell_size
-const bevel_enabled = true
-const color = 0xffff
+
 
 const axesHelper = new THREE.AxesHelper( 10);
 scene.add( axesHelper );
@@ -32,21 +30,21 @@ const light = new THREE.PointLight( 0xffffff, 10, 100 );
 light.position.y = 5
 scene.add(light)
 
-const light2 = new THREE.PointLight( 0xffffff, 5, 100 );
+const light2 = new THREE.PointLight( 0xffffff, 10, 100 );
 light2.position.z = 5
 
-const light3 = new THREE.PointLight( 0xffffff, 5, 100 );
+const light3 = new THREE.PointLight( 0xffffff, 10, 100 );
 light3.position.z = -5
 
 
-const light4 = new THREE.PointLight( 0xffffff, 5, 100 );
+const light4 = new THREE.PointLight( 0xffffff, 10, 100 );
 light4.position.y = -5
 
 
-const light5 = new THREE.PointLight( 0xffffff, 5, 100 );
+const light5 = new THREE.PointLight( 0xffffff, 10, 100 );
 light5.position.x = 5
 
-const light6 = new THREE.PointLight( 0xffffff, 5, 100 );
+const light6 = new THREE.PointLight( 0xffffff, 10, 100 );
 light6.position.x = -5
 
 scene.add(light2)
@@ -68,12 +66,37 @@ scene.add(light6)
 // gg.userData.materials = meshes.map(m=>m.material)
 // controls.panSpeed = 5
 
-// mesh.rotateY(Math.PI/2)
 
+class Maze{
+	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
+		this.width = width
+		this.height = height
+		this.depth = depth
+		this.radiusPercent = radiusPercent
+		this.wall_thickness = wall_thickness
+		this.cell_size = cell_size
+		this.wall_height = cell_size
+		this.bevelEnabled = bevelEnabled
+		this.color = color
+		this.maze = generateMaze(width, height, depth)
+		this.model = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
+	}
 
+	updateMaze(){
+		this.maze = generateMaze(this.width, this.height, this.depth)
+	}
 
-const maze = createMazeCubeGroup(width, height, depth, radius, wall_height, wall_thickness, cell_size, bevel_enabled, color)
-scene.add(maze)
+	updateModel(scene){
+		scene.remove(this.model)
+		this.model = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze)
+		scene.add(this.model)
+	}
+}
+
+const maze = new Maze()
+scene.add(maze.model)
+initializeInputHandler(maze, scene)
+
 
 function animate() {
 	requestAnimationFrame( animate );

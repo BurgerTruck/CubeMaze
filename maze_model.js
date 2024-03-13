@@ -138,13 +138,13 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	let currX = starts[0][0]
 	let currY = starts[0][1]
     shape.moveTo(currX, currY);
-	console.log(traversalInformations)
+	// console.log(traversalInformations)
 	if(isFirstRemoved(sideWalls, traversalInformations, 0, planeIndex)){
 
 		currX = wallInside[0]
 		shape.moveTo(currX, currY-radius)
 	}
-	console.log("START: "+currX, currY)	
+	// console.log("START: "+currX, currY)	
 	let currRemoved = false
 	let prevRemoved = false
 	let isSideExtended = [false, false, false, false]
@@ -272,46 +272,50 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 function createBaseCubeMesh( width, height, depth, radius = 0.1, color) {
 
 	// const material = new THREE.MeshStandardMaterial({wireframe:true})
-	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.10, roughness:0.6 } );
+	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.65, roughness:0.5 } );
 	const geometry = createBoxWithRoundedEdges( width, height, depth, radius,)
 	const mesh = new THREE.Mesh( geometry, material ) ;
 	return mesh
 }
 function createWallMesh(width, height, depth, wall_height,wallThickness, radius, distance_between_walls, sideWalls, index, traversalInformations, bevelEnabled, color ) {
 	const geometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled)
-	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.10, roughness:0.6 } );
+	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.65, roughness:0.5, } );
 	const mesh = new THREE.Mesh( geometry, material ) ;
 	return mesh
 }
 
-function createMazeCubeGroup(width, height, depth, radius = 0, wall_height = 0.1, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = false, color = 0xffffff) {
+function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_height = 0.1, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = false, color = 0xffffff, maze) {
 	const effective_depth = depth * cell_size
 	const effective_width = width  * cell_size
 	const effective_height = height * cell_size
 	
+	const radius = radiusPercent/100/2 * Math.min(Math.min(effective_depth, effective_width), effective_height)
+
 	const total_depth  =effective_depth + 2* radius 
 	const total_width = effective_width + 2 * radius
 	const total_height = effective_height + 2* radius
-	const result = generateMaze(width,height,depth)
-	let {sideCells, sideWalls} = result
-	console.log(sideWalls)
+	
+	
+	let {sideCells, sideWalls} = maze
+	// console.log(sideWalls)
 
 
-	console.log("DEPTH: "+depth)
+	// console.log("DEPTH: "+depth)
 
 	const distance_between_walls = cell_size
 
 	const group = new THREE.Group()
 	const cube = createBaseCubeMesh(total_width, total_height, total_depth, radius, color)
 
-    let scale = 1
-    if(radius > 0)scale+=0.01
-    if(bevelEnabled)scale+=0.015
-	cube.scale.set(scale, scale, scale)
+	const padding = wall_thickness*2
+	const scaleX = (total_width+padding)/total_width
+	const scaleY = (total_height+padding)/total_height
+	const scaleZ = (total_depth+padding)/total_depth
+	cube.scale.set(scaleX, scaleY, scaleZ)
 	group.add(cube)
 
-	console.log("EFFECTIVE: "+effective_depth)
-	console.log("DISTANCE: "+distance_between_walls)
+	// console.log("EFFECTIVE: "+effective_depth)
+	// console.log("DISTANCE: "+distance_between_walls)
 	const zWallOrder = [{wallIndex: 1, reverseTraversal: true, vertical: false, reversePlaneIndex: false},
 						 {wallIndex: 5, reverseTraversal: false, vertical: false, reversePlaneIndex: true},
 						 {wallIndex: 3, reverseTraversal: true, vertical: false, reversePlaneIndex: false},

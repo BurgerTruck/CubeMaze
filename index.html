@@ -6,8 +6,55 @@
 		<style>
 			body { margin: 0; }
 		</style>
+	<link rel="stylesheet" type = "text/css" href = "style.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 	</head>
 	<body>
 		<script type="module" src="/main.js"></script>
+		<script scr = "input_handler.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+		<div id="settings-icon" class="icon"><i class="fas fa-cog"></i></div>
+		<div id="ui-container" class="hidden">
+			<label for="cube-width">Width:</label>
+			<input type="range" id="cube-width" min="3" max="50" value="9">
+			<span id="cube-width-value">9</span>
+			<br>
+
+			<label for="cube-height">Height:</label>
+			<input type="range" id="cube-height" min="3" max="50" value="9">
+			<span id="cube-height-value">9</span>
+			<br>
+
+			<label for="cube-depth">Depth:</label>
+			<input type="range" id="cube-depth" min="3" max="50" value="9">
+			<span id="cube-depth-value">9</span>
+			<br>
+
+			<label for="cell-size">Cell Size:</label>
+			<input type="range" id="cell-size" min="0.05" max="1" value="0.1" step = "0.01">
+			<span id="cell-size-value">0.1</span>
+			<br>
+
+			<label for="radius">Radius:</label>
+			<input type="range" id="radius" min="0" max="100" value="0" step = "1">
+			<span id="radius-value">0</span>
+			<br>
+
+			<label for="bevel-enabled">Bevel Enabled:</label>
+			<input type="checkbox" id="bevel-enabled">
+			<br>
+
+			<label for="cube-color">Color:</label>
+			<input type="color" id="cube-color">
+			<br>
+			
+			<label for="wall-thickness">Wall Thickness:</label>
+			<input type="range" id="wall-thickness" min="0.01" max="0.1" value="0.1" step = "0.01">
+			<span id="wall-thickness-value">0.1</span>
+			<br>
+
+			<button id="generate-btn">Generate Maze</button> 
+		</div>
+
 	</body>
 </html>

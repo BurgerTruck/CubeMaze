@@ -1,0 +1,38 @@
+/* styles.css */
+body {
+    margin: 0;
+}
+
+canvas {
+    display: block;
+}
+
+#settings-icon {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    cursor: pointer;
+    font-size: 18px;
+    color: #fff;
+}
+
+#ui-container {
+    position: absolute;
+    top: 50px;
+    z-index: 1000;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    transition: left 0.3s ease;
+}
+
+.hidden {
+    left: -300px; 
+}
+
+.show {
+    /* transition: left 0.3s ease; */
+    left: 20px; 
+
+}
