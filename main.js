@@ -12,12 +12,6 @@ const controls = new OrbitControls( camera, renderer.domElement );
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-
-
-
-
-
-
 const axesHelper = new THREE.AxesHelper( 10);
 scene.add( axesHelper );
 
@@ -97,6 +91,39 @@ const maze = new Maze()
 scene.add(maze.model)
 initializeInputHandler(maze, scene)
 
+//ball
+const ballGeometry = new THREE.SphereGeometry(0.025, 32, 32);
+const ballMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+
+ball.position.set(0, 0, 0.5);
+scene.add(ball);
+
+
+//move the ball
+function handleKeyDown(event) {
+    const moveDistance = 0.01; 
+    const keyCode = event.keyCode;
+    
+    // WASD
+    switch (keyCode) {
+        case 87: // W
+            ball.position.y += moveDistance;
+            break;
+		case 65: // A
+			ball.position.x -= moveDistance;
+			break;
+        case 83: // S
+            ball.position.y -= moveDistance;
+            break;
+        case 68: // D
+            ball.position.x += moveDistance;
+            break;
+    }
+}
+
+// Add event listener for keydown event
+document.addEventListener('keydown', handleKeyDown, false);
 
 function animate() {
 	requestAnimationFrame( animate );
