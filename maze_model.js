@@ -294,7 +294,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	const total_depth  =effective_depth + 2* radius 
 	const total_width = effective_width + 2 * radius
 	const total_height = effective_height + 2* radius
-	
+	const walls = []
 	
 	let {sideCells, sideWalls} = maze
 	// console.log(sideWalls)
@@ -344,7 +344,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 		const wall = createWallMesh(total_width + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color)	
 		wall.position.z = startZ- (i==0?eps:0)
 		group.add(wall)
-
+		walls.push(wall)
 		startZ += distance_between_walls
 
 	}
@@ -357,7 +357,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 		wall.rotateY(Math.PI/2)
 		wall.position.x = startX - (i==0?eps:0)
 		group.add(wall)
-
+		walls.push(wall)
 		startX += distance_between_walls
 	}
 
@@ -370,9 +370,12 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 		wall.rotateX(Math.PI/2)
 		wall.position.y = startY	- (i==0?eps:0) 
 		group.add(wall)
-
+		walls.push(wall)
 		startY += distance_between_walls
 	}
 
-	return group
+	return {
+		group: group,
+		walls: walls
+	}
 }
