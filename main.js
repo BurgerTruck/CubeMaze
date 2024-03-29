@@ -78,7 +78,9 @@ class Maze{
 
 		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
 		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
-		this.model = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
+        const data = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
+		this.model = data.group
+        this.walls = data.walls
 	}
 	
 	updateMaze(){
