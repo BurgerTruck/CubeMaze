@@ -18,7 +18,7 @@ class Wall {
 }
 
 class Cell {
-    constructor(position, walls, isVisited, isObstacle) {
+    constructor(position, walls, isVisited, isObstacle, face) {
         this.upWall = walls[0];
         this.rightWall = walls[1];
         this.bottomWall = walls[2];
@@ -32,6 +32,7 @@ class Cell {
         this.isVisited = isVisited;
         this.isObstacle = isObstacle;
         this.position = position;
+        this.face = face
     }
     
     getDirection(direction) {
@@ -60,10 +61,7 @@ function generateWalls(offsetRow = 0, offsetCol = 0, width, height, face = 0) {
     let vertical = false;
     
     for (let i = 0; i < 2 * height + 1; i++) {
-        const row = Math.floor(i / 2) + offsetRow;
-        
         for (let j = 0; j < (vertical ? width + 1 : width); j++) {
-            const col = j + offsetCol;
             const wall = new Wall({ isVertical: vertical, face: face});
             walls[i][j] = wall;
         }   
@@ -73,7 +71,7 @@ function generateWalls(offsetRow = 0, offsetCol = 0, width, height, face = 0) {
     return walls;
 }
 
-function generateCells(walls, offsetRow = 0, offsetCol = 0, width, height) {
+function generateCells(walls, width, height, face = 0) {
     const cells = Array.from({ length: height }, () => Array.from({ length: width }, () => null));
 
     for (let i = 0; i < height; i++) {
@@ -83,7 +81,7 @@ function generateCells(walls, offsetRow = 0, offsetCol = 0, width, height) {
             const bottomWall = walls[i * 2 + 2][j];
             const leftWall = walls[i * 2 + 1][j];
             
-            const cell = new Cell([i + offsetRow, j + offsetCol], [upWall, rightWall, bottomWall, leftWall], false, false);
+            const cell = new Cell([i, j], [upWall, rightWall, bottomWall, leftWall], false, false, face);
             cells[i][j] = cell;
         }
     }
@@ -100,15 +98,16 @@ function generateCells(walls, offsetRow = 0, offsetCol = 0, width, height) {
     return cells;
 }
 const directions = ["up", "right", "bottom", "left"];
-function dfs(cell) {
+function dfs(cell, min_distances, depth = 0 ) {
     cell.isVisited = true;
-
+    min_distances
     const shuffledDirections = [...directions].sort(() => Math.random() - 0.5);
-    
+    const min_distance = min_distances.has(cell) ? min_distances.get(cell) : Infinity;
+    min_distances.set(cell, Math.min(min_distance, depth));
     for (const direction of shuffledDirections) {
         const [wall, nextCell] = cell.getDirection(direction);
         if (nextCell && !nextCell.isVisited) {
-            dfs(nextCell);
+            dfs(nextCell, min_distances, depth+1);
             wall.isRemoved = true;
         }
     }
@@ -256,9 +255,7 @@ function generateMaze(width, height, depth){
 
     for (let i = 0; i < 6; i++) {
         const size = sizes[i];
-        const offsetRow = sideOffsets[i][0];
-        const offsetCol = sideOffsets[i][1];
-        const cells = generateCells(sideWalls[i], offsetRow, offsetCol, size[0], size[1]);
+        const cells = generateCells(sideWalls[i],  size[0], size[1], i);
         sideCells[i] = cells;
     }
 
@@ -283,17 +280,24 @@ function generateMaze(width, height, depth){
     const startSide = 2; // or choose randomly: Math.floor(Math.random() * 6);
     const startRow = Math.floor(Math.random() * sideCells[startSide].length);
     const startCol = Math.floor(Math.random() * sideCells[startSide][0].length);
-    dfs(sideCells[startSide][startRow][startCol]);
+
+    const min_distances = new Map()
+    const start = sideCells[startSide][startRow][startCol];
+    dfs(start, min_distances);
     
+    let max_distance = -Infinity;
+    let end = null
+    for(const [cell, min_distance] of min_distances){
+        if (min_distance > max_distance) {
+            max_distance = min_distance
+            end = cell
+        }
+    }
+    console.log("MAX DISTANCE: "+max_distance)
     console.log(sideWalls[5][sideWalls[5].length -2][sideWalls[5][sideWalls[5].length -2].length-1] === sideWalls[3][1][sideWalls[3][1].length-1])
     console.log(sideWalls[5][sideWalls[5].length -2][sideWalls[5][sideWalls[5].length -2].length-1])
     console.log(sideWalls[3][1][sideWalls[3][1].length-1])
         // const sideWalls = [[[[true, 5], [false, 5], [true, 5], [true, 5], [true, 5], [false, 5], [true, 5]], [[false, 1], [false, 0], [true, 0], [false, 0], [false, 0], [true, 0], [true, 0], [false, 3]], [[true, 0], [true, 0], [false, 0], [true, 0], [false, 0], [false, 0], [false, 0]], [[true, 1], [false, 0], [true, 0], [true, 0], [false, 0], [true, 0], [true, 0], [false, 3]], [[false, 0], [false, 0], [false, 0], [false, 0], [true, 0], [true, 0], [false, 0]], [[true, 1], [true, 0], [true, 0], [true, 0], [true, 0], [false, 0], [false, 0], [true, 3]], [[true, 0], [true, 0], [false, 0], [false, 0], [false, 0], [true, 0], [true, 0]], [[false, 1], [false, 0], [false, 0], [true, 0], [false, 0], [true, 0], [false, 0], [true, 3]], [[true, 0], [true, 0], [true, 0], [true, 0], [false, 0], [false, 0], [false, 0]], [[true, 1], [false, 0], [false, 0], [false, 0], [true, 0], [false, 0], [true, 0], [true, 3]], [[false, 0], [true, 0], [true, 0], [false, 0], [true, 0], [true, 0], [false, 0]], [[true, 1], [false, 0], [false, 0], [false, 0], [true, 0], [true, 0], [false, 0], [true, 3]], [[true, 0], [true, 0], [true, 0], [false, 0], [false, 0], [true, 0], [false, 0]], [[false, 1], [true, 0], [false, 0], [true, 0], [true, 0], [false, 0], [false, 0], [true, 3]], [[false, 0], [false, 0], [false, 0], [false, 0], [true, 0], [false, 0], [true, 0]]], [[[false, 1], [true, 1], [true, 1], [false, 1], [true, 1], [true, 1], [false, 1]], [[false, 5], [false, 1], [false, 1], [true, 1], [false, 1], [false, 1], [false, 1], [true, 1]], [[true, 1], [true, 1], [false, 1], [false, 1], [true, 1], [true, 1], [true, 1]], [[true, 5], [false, 1], [true, 1], [true, 1], [true, 1], [false, 1], [true, 1], [false, 1]], [[false, 1], [false, 1], [false, 1], [false, 1], [false, 1], [true, 1], [false, 1]], [[true, 5], [true, 1], [true, 1], [false, 1], [true, 1], [true, 1], [false, 1], [true, 1]], [[true, 1], [false, 1], [false, 1], [true, 1], [false, 1], [false, 1], [true, 1]], [[false, 5], [false, 1], [true, 1], [true, 1], [false, 1], [true, 1], [false, 1], [true, 1]], [[true, 1], [true, 1], [false, 1], [false, 1], [false, 1], [true, 1], [false, 1]], [[false, 5], [false, 1], [false, 1], [false, 1], [true, 1], [true, 1], [false, 1], [false, 1]], [[true, 1], [true, 1], [true, 1], [true, 1], [true, 1], [true, 1], [true, 1]], [[false, 5], [false, 1], [false, 1], [true, 1], [false, 1], [false, 1], [true, 1], [false, 1]], [[true, 1], [true, 1], [false, 1], [true, 1], [true, 1], [false, 1], [true, 1]], [[false, 5], [true, 1], [true, 1], [false, 1], [false, 1], [false, 1], [false, 1], [true, 1]], [[false, 1], [false, 1], [true, 1], [true, 1], [true, 1], [true, 1], [false, 1]]], [[[false, 0], [false, 0], [false, 0], [false, 0], [true, 0], [false, 0], [true, 0]], [[true, 1], [true, 2], [true, 2], [false, 2], [false, 2], [true, 2], [true, 2], [false, 2]], [[false, 2], [false, 2], [true, 2], [true, 2], [false, 2], [false, 2], [false, 2]], [[false, 1], [true, 2], [false, 2], [true, 2], [true, 2], [false, 2], [true, 2], [true, 2]], [[true, 2], [true, 2], [false, 2], [false, 2], [true, 2], [true, 2], [false, 2]], [[true, 1], [false, 2], [true, 2], [true, 2], [false, 2], [false, 2], [true, 2], [false, 2]], [[false, 2], [false, 2], [false, 2], [true, 2], [false, 2], [false, 2], [true, 2]], [[true, 1], [false, 2], [true, 2], [true, 2], [true, 2], [false, 2], [true, 2], [false, 2]], [[true, 2], [false, 2], [false, 2], [false, 2], [true, 2], [true, 2], [true, 2]], [[false, 1], [false, 2], [true, 2], [true, 2], [false, 2], [true, 2], [false, 2], [false, 2]], [[true, 2], [true, 2], [false, 2], [true, 2], [true, 2], [false, 2], [false, 2]], [[false, 1], [true, 2], [true, 2], [false, 2], [false, 2], [false, 2], [true, 2], [false, 2]], [[false, 2], [false, 2], [false, 2], [true, 2], [true, 2], [true, 2], [true, 2]], [[true, 1], [true, 2], [false, 2], [false, 2], [false, 2], [false, 2], [false, 2], [false, 2]], [[false, 2], [true, 2], [true, 2], [true, 2], [false, 2], [true, 2], [true, 2]]], [[[true, 3], [true, 3], [true, 3], [true, 3], [true, 3], [false, 3], [false, 3]], [[false, 2], [false, 3], [true, 3], [false, 3], [false, 3], [true, 3], [true, 3], [false, 5]], [[true, 3], [true, 3], [false, 3], [true, 3], [false, 3], [false, 3], [true, 3]], [[true, 2], [false, 3], [true, 3], [false, 3], [false, 3], [true, 3], [false, 3], [false, 5]], [[false, 3], [false, 3], [true, 3], [true, 3], [true, 3], [false, 3], [true, 3]], [[false, 2], [true, 3], [true, 3], [true, 3], [false, 3], [true, 3], [true, 3], [true, 5]], [[false, 3], [false, 3], [false, 3], [false, 3], [true, 3], [false, 3], [false, 3]], [[false, 2], [true, 3], [true, 3], [false, 3], [true, 3], [true, 3], [false, 3], [true, 5]], [[true, 3], [false, 3], [true, 3], [false, 3], [false, 3], [false, 3], [true, 3]], [[false, 2], [false, 3], [false, 3], [false, 3], [true, 3], [true, 3], [true, 3], [false, 5]], [[true, 3], [true, 3], [true, 3], [true, 3], [false, 3], [false, 3], [false, 3]], [[false, 2], [false, 3], [false, 3], [true, 3], [false, 3], [true, 3], [true, 3], [false, 5]], [[true, 3], [true, 3], [false, 3], [false, 3], [false, 3], [false, 3], [true, 3]], [[false, 2], [false, 3], [true, 3], [true, 3], [true, 3], [true, 3], [true, 3], [false, 5]], [[true, 3], [true, 3], [false, 3], [true, 3], [false, 3], [false, 3], [false, 3]]], [[[false, 2], [true, 2], [true, 2], [true, 2], [false, 2], [true, 2], [true, 2]], [[false, 1], [false, 4], [false, 4], [false, 4], [true, 4], [true, 4], [false, 4], [true, 3]], [[true, 4], [true, 4], [true, 4], [false, 4], [false, 4], [true, 4], [false, 4]], [[true, 1], [true, 4], [false, 4], [true, 4], [true, 4], [false, 4], [true, 4], [true, 3]], [[false, 4], [false, 4], [false, 4], [false, 4], [true, 4], [false, 4], [false, 4]], [[true, 1], [true, 4], [true, 4], [false, 4], [true, 4], [false, 4], [true, 4], [false, 3]], [[false, 4], [true, 4], [false, 4], [true, 4], [false, 4], [true, 4], [false, 4]], [[true, 1], [false, 4], [true, 4], [false, 4], [false, 4], [true, 4], [true, 4], [true, 3]], [[false, 4], [false, 4], [true, 4], [true, 4], [false, 4], [false, 4], [false, 4]], [[true, 1], [false, 4], [true, 4], [false, 4], [false, 4], [true, 4], [true, 4], [false, 3]], [[true, 4], [true, 4], [false, 4], [true, 4], [true, 4], [false, 4], [true, 4]], [[false, 1], [true, 4], [false, 4], [true, 4], [false, 4], [false, 4], [true, 4], [false, 3]], [[false, 4], [false, 4], [true, 4], [false, 4], [true, 4], [false, 4], [true, 4]], [[false, 1], [true, 4], [true, 4], [false, 4], [true, 4], [true, 4], [false, 4], [false, 3]], [[true, 4], [false, 4], [false, 4], [false, 4], [false, 4], [true, 4], [true, 4]]], [[[true, 4], [false, 4], [false, 4], [false, 4], [false, 4], [true, 4], [true, 4]], [[false, 5], [false, 5], [true, 5], [true, 5], [true, 5], [true, 5], [false, 5], [false, 5]], [[true, 5], [true, 5], [true, 5], [false, 5], [false, 5], [false, 5], [true, 5]], [[false, 5], [false, 5], [false, 5], [false, 5], [true, 5], [true, 5], [false, 5], [false, 5]], [[true, 5], [false, 5], [true, 5], [true, 5], [false, 5], [true, 5], [true, 5]], [[false, 5], [true, 5], [true, 5], [false, 5], [false, 5], [true, 5], [false, 5], [false, 5]], [[false, 5], [false, 5], [false, 5], [false, 5], [true, 5], [true, 5], [true, 5]], [[false, 5], [true, 5], [true, 5], [true, 5], [true, 5], [false, 5], [false, 5], [true, 5]], [[true, 5], [false, 5], [false, 5], [false, 5], [false, 5], [true, 5], [false, 5]], [[true, 5], [false, 5], [true, 5], [true, 5], [true, 5], [true, 5], [false, 5], [true, 5]], [[false, 5], [true, 5], [false, 5], [false, 5], [false, 5], [false, 5], [true, 5]], [[true, 5], [true, 5], [true, 5], [true, 5], [true, 5], [true, 5], [false, 5], [false, 5]], [[false, 5], [false, 5], [false, 5], [false, 5], [false, 5], [true, 5], [true, 5]], [[false, 5], [true, 5], [true, 5], [false, 5], [true, 5], [false, 5], [false, 5], [false, 5]], [[true, 5], [false, 5], [true, 5], [true, 5], [true, 5], [false, 5], [true, 5]]]]
-
-
-
-
-
 
         // for(let i = 0; i < sideWalls.length; i++){
         //     for(let j = 0; j < sideWalls[i].length; j++){
@@ -314,5 +318,8 @@ function generateMaze(width, height, depth){
     //     }
     //     process.stdout.write("\n");
     // }
-     return {sideCells, sideWalls}
+    
+		console.log("START: "+ start.face +"," + start.position)
+		console.log("END: "+ end.face +"," + end.position)
+     return {sideCells, sideWalls, start, end}
 }

@@ -73,9 +73,12 @@ class Maze{
 		this.bevelEnabled = bevelEnabled
 		this.color = color
 		this.maze = generateMaze(width, height, depth)
-		const mazeData = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
-		this.walls = mazeData.walls;
-        this.model = mazeData.group;
+		this.start_cell = this.maze.start
+		this.end_cell = this.maze.end
+
+		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
+		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
+		this.model = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
 	}
 	
 	updateMaze(){
