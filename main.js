@@ -175,10 +175,6 @@ const planeQuaternions = [
     new CANNON.Quaternion().setFromEuler(0, -Math.PI/2, 0), // Right
     new CANNON.Quaternion().setFromEuler( Math.PI/2,0 , 0), // Top
     new CANNON.Quaternion().setFromEuler(-Math.PI/2, 0, 0), // Bottom
-    // new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI / 2), // Left
-    // new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -Math.PI / 2), // Right
-    // new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2), // Top
-    // new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2) // Bottom
 ];
 
 
@@ -206,8 +202,7 @@ function extractVerticesAndIndices(geometry) {
     const position = geometry.getAttribute('position');
     const vertices = [];
     const indices = [];
-    
-    // Extract vertices
+
     for (let i = 0; i < position.count; i++) {
         const x = position.getX(i);
         const y = position.getY(i);
@@ -218,10 +213,6 @@ function extractVerticesAndIndices(geometry) {
             indices.push([i, i + 1, i + 2]);
         }
     }
-    
-    // for (let i = 0; i < position.count; i += 3) {
-        // indices.push([i, i + 1, i + 2]);
-    // }
     
     return { vertices: vertices, indices: indices };
 }
@@ -247,7 +238,6 @@ maze.walls.forEach(wall => {
     console.log(vertices, indices)
     const wallShape = new CANNON.ConvexPolyhedron(vertices, indices);
 
-
     // Create wall body with shape, material, mass, position and quaternion as properties
     const wallBody = new CANNON.Body({ 
         shape: wallShape,
@@ -268,6 +258,7 @@ maze.walls.forEach(wall => {
 // Adjust this value as needed; cannot be extra big may pass throguh walls
 const moveForce = 10
 // Move the ball
+// To be removed later
 function handleKeyDown(event) {
     const keyCode = event.keyCode; 
 
@@ -291,24 +282,14 @@ function handleKeyDown(event) {
 
 
 
-function updateWallAndBallPositionAndQuaternion(){
+function updateBallPositionAndQuaternion(){
     ball.position.copy(ballBody.position);
-    ball.quaternion.copy(ballBody.quaternion);
-
-    // console.log('Ball Mesh Position: ', ball.position)
-    // console.log('Ball Body Position: ', ballBody.position)
-    // maze.walls.forEach((wall, index) =>{
-    //     if(wallBodies[index]){
-    //         wall.position.copy(wallBodies[index].position);
-    //         wall.quaternion.copy(wallBodies[index].quaternion);
-    //     }
-    // })
-    
+    ball.quaternion.copy(ballBody.quaternion);    
 }
 
 
+// Hide later only for debugging collisions
 const cannonDebugger = new CannonDebugger(scene, world, {
-    //
 })
 
 document.addEventListener('keydown', handleKeyDown, false);
@@ -316,9 +297,8 @@ function animate() {
 	requestAnimationFrame( animate );
     world.step(1/60); // Step the physics world
     
-    updateWallAndBallPositionAndQuaternion();
+    updateBallPositionAndQuaternion();
     
-
 	renderer.render( scene, camera );
     cannonDebugger.update()
 	controls.update()
