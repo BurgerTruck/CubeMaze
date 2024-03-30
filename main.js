@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as CANNON from 'cannon';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { MathUtils } from 'three';
 import { createMazeCubeGroup } from './maze_model.js';
 import { generateMaze } from './maze.js';
 import { initializeInputHandler } from './input_handler.js';
@@ -10,7 +12,7 @@ import CannonDebugger from 'cannon-es-debugger';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
 const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
-const controls = new OrbitControls( camera, renderer.domElement );
+// const controls = new OrbitControls( camera, renderer.domElement );
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
@@ -101,10 +103,12 @@ scene.add(maze.model)
 initializeInputHandler(maze, scene)
 
 /////////// PHYSICS ///////////
+/////NOTE: There is a bug where sometimes the ball will pass through collisions: may have something to do with timestep/force/ idk
+
 // Physics world
 const world = new CANNON.World();
 world.gravity = new CANNON.Vec3(0, -1, -1)
-world.allowSleep = true; // improve performance
+world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 // Ball mesh
@@ -114,7 +118,7 @@ const ballMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
 }); 
 const ball = new THREE.Mesh(ballGeometry, ballMat)
-ball.position.set(0, 0, 0.5)
+ball.position.set(0, 0, 0.25)
 scene.add(ball);
 
 // Ball body
@@ -133,15 +137,6 @@ ballBody.quaternion.set(ball.quaternion.x, ball.quaternion.y, ball.quaternion.z,
 world.addBody(ballBody);
 
 ////////////// GLASS LAYER ///////////
-
-// Define dimensions for the glass cube
-console.log('Width of maze: ', maze.width)
-console.log('Height of maze: ', maze.height)
-console.log('Maze Wall thickness: ', maze.wall_thickness)
-console.log('Maze Cell Size: ', maze.cell_size)
-console.log('Wall Height: ', maze.height)
-console.log('Radius: ', maze.radiusPercent)
-
 // For now, might need to change later
 const glassCubeWidth = maze.width * maze.cell_size + 20 * maze.wall_thickness;
 const glassCubeHeight = maze.height * maze.cell_size + 20 * maze.wall_thickness;
@@ -152,47 +147,40 @@ const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 
 const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
 const glassBox = new THREE.Mesh(glassGeometry, glassMaterial);
 scene.add(glassBox);
-
-// Set positions of the glass planes
 glassBox.position.set(0, 0, 0); // Adjust position as needed
 
-// Define collision shape for the glass planes
-const glassPlaneShape = new CANNON.Plane();
 
-// Define positions and orientations of the glass planes
+// // Define collision shape for the glass planes
+// const glassPlaneShape = new CANNON.Plane();
+
+// // Define positions and orientations of the glass planes
 const planePositions = [
-    new CANNON.Vec3(0, 0, glassCubeDepth / 2),   // Front
-    new CANNON.Vec3(0, 0, -glassCubeDepth / 2),  // Back
-    new CANNON.Vec3(-glassCubeWidth / 2, 0, 0),  // Left
-    new CANNON.Vec3(glassCubeWidth / 2, 0, 0),   // Right
-    new CANNON.Vec3(0, glassCubeHeight / 2, 0),  // Top
-    new CANNON.Vec3(0, -glassCubeHeight / 2, 0)  // Bottom
-];
-const planeQuaternions = [
-    new CANNON.Quaternion().setFromEuler(0, Math.PI, 0), // Front
-    new CANNON.Quaternion(), // Back
-    new CANNON.Quaternion().setFromEuler(0, Math.PI/2, 0), // Left
-    new CANNON.Quaternion().setFromEuler(0, -Math.PI/2, 0), // Right
-    new CANNON.Quaternion().setFromEuler( Math.PI/2,0 , 0), // Top
-    new CANNON.Quaternion().setFromEuler(-Math.PI/2, 0, 0), // Bottom
+    new CANNON.Vec3(0, 0, 0),  // Center
+    new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
+    new CANNON.Vec3(0, 0, -glassCubeDepth),  // Back
+    new CANNON.Vec3(-glassCubeWidth, 0, 0),  // Left
+    new CANNON.Vec3(glassCubeWidth, 0, 0),   // Right
+    new CANNON.Vec3(0, glassCubeHeight, 0),  // Top
+    new CANNON.Vec3(0, -glassCubeHeight, 0)  // Bottom
 ];
 
-
-// Add glass planes to the world
-for (let i = 0; i < planePositions.length; i++) {
-    const glassPlane = new CANNON.Body({
+// Define a body for the glass
+const glassBody = new CANNON.Body({
         mass: 0,
-        shape: glassPlaneShape,
         material: new CANNON.Material({
             friction: 0,
             restitution: 0
         }),
-        position: planePositions[i],
-        quaternion: planeQuaternions[i],
-    });
-    
-    world.addBody(glassPlane);
-}
+});
+// Add shapes on the body to make it a 'cross' shape
+planePositions.forEach(position =>{
+    const glassShape = new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2))
+    glassBody.addShape(glassShape, position)
+    // console.log(position)
+})
+console.log(glassBody)
+world.addBody(glassBody)
+
 
 // Wall bodies
 const wallBodies = []
@@ -216,44 +204,66 @@ function extractVerticesAndIndices(geometry) {
     
     return { vertices: vertices, indices: indices };
 }
+maze.model.traverse((child) =>{
+    if(child.isMesh){
+        const geometry = child.geometry.clone();
+        geometry.applyMatrix4(child.matrixWorld);
+        const { vertices, indices } = extractVerticesAndIndices(geometry);
+        const shape = new CANNON.ConvexPolyhedron(vertices, indices);
+        const wallBody = new CANNON.Body({ 
+            shape: shape,
+            material: new CANNON.Material({
+                friction: 0,
+                restitution: 0.5
+            }),
+            
+            mass: 0
+        }); 
+        wallBody.position.copy(child.position)
+        wallBody.quaternion.copy(child.quaternion)
+        
+        world.addBody(wallBody);
+        wallBodies.push(wallBody);
+    } 
+})
 
 // Assign a collision body for each wall
-maze.walls.forEach(wall => {
+// maze.walls.forEach(wall => {
     
-    // DONOT REMOVE: need for testing because for now it is faster
-    // wall.updateMatrixWorld();
-    // const bbox = new THREE.Box3().setFromObject(wall);
-    // const width = bbox.max.x - bbox.min.x;
-    // const height = bbox.max.y - bbox.min.y;
-    // const depth = bbox.max.z - bbox.min.z;
+//     // DONOT REMOVE: need for testing because for now it is faster
+//     // wall.updateMatrixWorld();
+//     // const bbox = new THREE.Box3().setFromObject(wall);
+//     // const width = bbox.max.x - bbox.min.x;
+//     // const height = bbox.max.y - bbox.min.y;
+//     // const depth = bbox.max.z - bbox.min.z;
     
-    // const wallShape = new CANNON.Box(new CANNON.Vec3(width/2, height/2, depth/2)); // not sure about this if Box is enough or it should be convex polyhedron
+//     // const wallShape = new CANNON.Box(new CANNON.Vec3(width/2, height/2, depth/2)); // not sure about this if Box is enough or it should be convex polyhedron
 
 
-    // THE REAL WORKING ONE: very slow for now
-    // Create the wall shape based on the width, height and depth of the wall
-    const wallData = extractVerticesAndIndices(wall.geometry);
-    let vertices = wallData.vertices
-    let indices = wallData.indices
-    console.log(vertices, indices)
-    const wallShape = new CANNON.ConvexPolyhedron(vertices, indices);
+//     // THE REAL WORKING ONE: very slow for now
+//     // Create the wall shape based on the width, height and depth of the wall
+//     const wallData = extractVerticesAndIndices(wall.geometry);
+//     let vertices = wallData.vertices
+//     let indices = wallData.indices
+//     console.log(vertices, indices)
+//     const wallShape = new CANNON.ConvexPolyhedron(vertices, indices);
 
-    // Create wall body with shape, material, mass, position and quaternion as properties
-    const wallBody = new CANNON.Body({ 
-        shape: wallShape,
-        material: new CANNON.Material({
-            friction: 0,
-            restitution: 0.5
-        }),
+//     // Create wall body with shape, material, mass, position and quaternion as properties
+//     const wallBody = new CANNON.Body({ 
+//         shape: wallShape,
+//         material: new CANNON.Material({
+//             friction: 0,
+//             restitution: 0.5
+//         }),
         
-        type: CANNON.Body.STATIC
-    }); 
-    wallBody.position.copy(wall.position)
-    wallBody.quaternion.copy(wall.quaternion)
+//         mass: 0
+//     }); 
+//     wallBody.position.copy(wall.position)
+//     wallBody.quaternion.copy(wall.quaternion)
     
-    world.addBody(wallBody);
-    wallBodies.push(wallBody);
-})
+//     world.addBody(wallBody);
+//     wallBodies.push(wallBody);
+// })
 
 // Adjust this value as needed; cannot be extra big may pass throguh walls
 const moveForce = 10
@@ -280,12 +290,87 @@ function handleKeyDown(event) {
     }
 }
 
+let isMouseDown = false;
+let startX, startY;
+const sensitivity = 0.001
 
 
-function updateBallPositionAndQuaternion(){
-    ball.position.copy(ballBody.position);
-    ball.quaternion.copy(ballBody.quaternion);    
+function rotateCube(event){
+    if(isMouseDown){
+        const deltaX = event.clientX - startX;
+        const deltaY = event.clientY - startY;
+
+        // Update maze mesh rotation
+        maze.model.rotation.y += deltaX * sensitivity;
+        maze.model.rotation.x += deltaY * sensitivity;
+
+        // Update glass mesh rotation
+        glassBox.rotation.y += deltaX * sensitivity;
+        glassBox.rotation.x += deltaY * sensitivity;
+        
+        // Update physics of cubes bodies
+        updateCubeBodies()
+
+        // Update start positions for the next iteration
+        startX = event.clientX;
+        startY = event.clientY;
+
+    }
+
+    
 }
+
+document.addEventListener('mousedown', (event) => {
+    if (event.button === 0) { // Left mouse button
+        isMouseDown = true;
+        startX = event.clientX;
+        startY = event.clientY;
+    }
+});
+
+
+document.addEventListener('mouseup', (event) => {
+    if (event.button === 0) { // Left mouse button
+        isMouseDown = false;
+    }
+});
+
+document.addEventListener('mousemove', rotateCube);
+
+function updateCubeBodies(){
+    // Might be a bug: since we are moving the meshes not the bodies, should be the other way around (wallBodies.copy(wall))
+    // Might only need to copy quaternion
+    // maze.walls.forEach((wall, index) =>{
+    //     if(wallBodies[index]){
+    //         wallBodies[index].position.copy(wall.position);
+    //         wallBodies[index].quaternion.copy(wall.quaternion);
+    //     }
+    // })
+
+    maze.model.traverse((child, index) =>{
+        if(child.isMesh){
+            const body = wallBodies[index]; // Get corresponding body
+
+            if (body) {
+                // Update quaternion of the body based on the mesh
+                body.quaternion.copy(child.quaternion);
+                console.log('Updated wall quaternion!!')
+            }
+        }
+    })
+    
+    glassBody.quaternion.copy(glassBox.quaternion)
+    glassBody.position.copy(glassBox.position)
+
+}
+
+function updateBallBody(){
+    ball.position.copy(ballBody.position);
+    ball.quaternion.copy(ballBody.quaternion); 
+    // console.log(ball.position)
+}
+
+
 
 
 // Hide later only for debugging collisions
@@ -297,11 +382,11 @@ function animate() {
 	requestAnimationFrame( animate );
     world.step(1/60); // Step the physics world
     
-    updateBallPositionAndQuaternion();
-    
+    updateBallBody()
+
 	renderer.render( scene, camera );
     cannonDebugger.update()
-	controls.update()
+	// controls.update()
     
 }
 animate();
