@@ -12,7 +12,13 @@ import CannonDebugger from 'cannon-es-debugger';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
 const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
-// const controls = new OrbitControls( camera, renderer.domElement );
+const controls = new OrbitControls( camera, renderer.domElement );
+
+controls.mouseButtons = {
+	RIGHT: THREE.MOUSE.ROTATE,
+	MIDDLE: THREE.MOUSE.DOLLY
+	// RIGHT: THREE.MOUSE.PAN
+}
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
@@ -201,7 +207,7 @@ maze.walls.forEach(wall => {
 
     // WORKING: very slow for now
     // Create the wall shape based on the width, height and depth of the wall
-    const wallData = extractVerticesAndIndices(wall.geometry);
+    const wallData = extractVerticesAndIndices(wall);
     let vertices = wallData.vertices
     let indices = wallData.indices
     console.log(vertices, indices)

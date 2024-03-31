@@ -25,7 +25,7 @@ function createBoxWithRoundedEdges( width, height, depth, radius, segments = 64,
 	
 	let geometry = new THREE.ExtrudeGeometry( shape, {
 	  depth: depth - radius * 2,
-	  bevelEnabled: true,
+	  bevelEnabled: false,
 	  bevelSegments: segments,
 	  steps: 1,
 	  bevelSize: radius,
@@ -97,7 +97,7 @@ function isFirstRemoved(sideWalls, traversalInformations, i, planeIndex){
 	let firstWall = walls[indices[0]][indices[1]]
 	return firstWall.isRemoved || firstWall.face!=wallIndex 
 }
-function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.00000001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled) {
+function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled, generateLowPolyGeom =false, curveSegments = -1) {
 	let shape = new THREE.Shape();
 	// const startX = radius
 	// const startY = radius
@@ -107,11 +107,12 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	const startY = 0
 	const endX = width
 	const endY = height
-	const eps = 0.001
+	const eps = 0.00001
 	// quadRadius = 0
 	// console.log("RADIUOS: "+ quadRadius + radius)
 	let radius  = bevelEnabled?wallThickness/2:0	
 	const outerQuadRadius = wallHeight + quadRadius - eps-radius
+	// const outerQuadRadius = 0
 	// radius = radius - eps
 
 	let e = [eps, - eps, -eps, eps]
@@ -119,14 +120,19 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	let wallOutside = [startX, endY, endX,startY ]
 
 
+
 	let innerCorners = [[startX+wallHeight, endY - wallHeight ], [endX - wallHeight , endY - wallHeight], [endX - wallHeight , wallHeight ], [wallHeight, wallHeight]]
-	let innerQuadCurveFrom = [[startX + wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , endY - wallHeight ], [endX - wallHeight , wallHeight+quadRadius ], [wallHeight+quadRadius , wallHeight ]]
-	let innerQuadCurveTo = [[startX + wallHeight + quadRadius , endY - wallHeight ], [endX - wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , wallHeight ], [wallHeight , wallHeight+quadRadius ]]
+	let innerQuadCurveFrom = [[startX + wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , endY - wallHeight ], [endX - wallHeight +eps, wallHeight+quadRadius ], [wallHeight+quadRadius , wallHeight-eps]]
+	let innerQuadCurveTo = [[startX + wallHeight + quadRadius , endY - wallHeight+eps ], [endX - wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , wallHeight ], [wallHeight , wallHeight+quadRadius ]]
 	
 	let outerCorners = [[startX, endY], [endX, endY], [endX, startY], [startX, startY]]	
 	let quadCurveFrom = [[startX, endY-outerQuadRadius], [endX - outerQuadRadius, endY], [endX, startY + outerQuadRadius], [startX + outerQuadRadius, startY]]
-	let quadCurveTo = [[startX + outerQuadRadius, endY], [endX, endY - outerQuadRadius], [endX - outerQuadRadius, startY], [startX, startY + outerQuadRadius]]
-
+	let quadCurveTo = [[startX + outerQuadRadius, endY], [endX, endY - outerQuadRadius], [endX - outerQuadRadius, startY], [startX, startY + outerQuadRadius+eps]]
+	
+	// console.log("QUAD RADIIUS: "+quadRadius)
+	// console.log(innerQuadCurveFrom[0])
+	// console.log(innerQuadCurveTo[0])
+	// console.log(innerCorners[0])
 
 	let starts = [[startX, wallHeight+quadRadius ], [startX + wallHeight + quadRadius, endY], [endX, endY - wallHeight-quadRadius], [endX - wallHeight-quadRadius , startY]]
 	let ends = [[startX, endY - wallHeight-quadRadius], [endX - wallHeight-quadRadius, endY], [endX,  wallHeight+quadRadius], [wallHeight+quadRadius, startY]]
@@ -139,18 +145,23 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	let currY = starts[0][1]
     shape.moveTo(currX, currY);
 	// console.log(traversalInformations)
-	if(isFirstRemoved(sideWalls, traversalInformations, 0, planeIndex)){
 
-		currX = wallInside[0]
-		shape.moveTo(currX, currY-radius)
-	}
-	// console.log("START: "+currX, currY)	
 	let currRemoved = false
 	let prevRemoved = false
+
+	if(isFirstRemoved(sideWalls, traversalInformations, 0, planeIndex)){
+		currRemoved = true;
+		currX = wallInside[0]
+		// currX = wallHeight
+		// currY = wallHeight
+		shape.moveTo(currX, currY)
+	}
+	// console.log("START: "+currX, currY)	
+
 	let isSideExtended = [false, false, false, false]
-
+	// console.log("START X: " + currX + "START Y: "+currY)
+	// console.log("FIRST WALL INSIDE X: "+wallInside[0])
 	for(let i = 0; i < 4; i++){
-
 		const wallIndex = traversalInformations[i].wallIndex
 		let walls = traverse(sideWalls, traversalInformations[i], planeIndex )
 		for(let j = 0; j < walls.length; j++ ){
@@ -204,14 +215,20 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 		const nextIndex = (i+1)%4;
 		const nextFirstRemoved = isFirstRemoved(sideWalls, traversalInformations, nextIndex, planeIndex)
 		if(currRemoved && nextFirstRemoved){
+
 			currX = innerQuadCurveFrom[i][0]
 			currY = innerQuadCurveFrom[i][1]
+			// if(i==3){
+			// 	console.log("QUAD CURVING FROM : "+currX + " CURRY: "+currY)
+			// }
 			shape.lineTo(currX, currY)
 			
 			currX = innerQuadCurveTo[i][0]
 			currY = innerQuadCurveTo[i][1]
 			shape.quadraticCurveTo(innerCorners[i][0], innerCorners[i][1], currX, currY)
-			
+			// if(i==3){
+			// 	console.log("QUAD CURVING TO : "+currX + " CURRY: "+currY)
+			// }
 		}else{
 			if(currRemoved){
 				let radiusAdd = radius
@@ -248,15 +265,15 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	
 	let geometry = new THREE.ExtrudeGeometry( shape, {
 	  depth: depth - radius * 2,
-	  bevelEnabled: true ,
+	  bevelEnabled: bevelEnabled ,
 	  bevelSegments: segments,
-	  steps: 4,
+	  steps: 1,
 	  bevelSize: radius,
 	  bevelThickness:radius,
 	  curveSegments: segments
 	});
 	
-
+	
 	geometry.center();
 
 	if(isSideExtended[0] ^ isSideExtended[2]){
@@ -265,8 +282,29 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 	if(isSideExtended[1] ^ isSideExtended[3]){
 		geometry.translate(0,(isSideExtended[1]?1:-1) * wallHeight/2, 0 )
 	}
+	if(generateLowPolyGeom){
+		let lowPoly = new THREE.ExtrudeGeometry( shape, {
+			depth: depth,
+			bevelEnabled: false ,
+			bevelSegments: segments,
+			steps: 1,
+			bevelSize: radius,
+			bevelThickness:radius,
+			curveSegments: curveSegments==-1?segments:curveSegments
+		  });
+		  lowPoly.center();
 
-	return geometry;	
+		  if(isSideExtended[0] ^ isSideExtended[2]){
+			  lowPoly.translate((isSideExtended[0]?-1:1) * wallHeight/2, 0, 0)
+		  }
+		  if(isSideExtended[1] ^ isSideExtended[3]){
+			  lowPoly.translate(0,(isSideExtended[1]?1:-1) * wallHeight/2, 0 )
+		  }
+
+		  return {geometry, lowPoly};	
+	}
+	return {geometry};
+
 }
 
 function createBaseCubeMesh( width, height, depth, radius = 0.1, color) {
@@ -278,10 +316,12 @@ function createBaseCubeMesh( width, height, depth, radius = 0.1, color) {
 	return mesh
 }
 function createWallMesh(width, height, depth, wall_height,wallThickness, radius, distance_between_walls, sideWalls, index, traversalInformations, bevelEnabled, color ) {
-	const geometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled)
-	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.65, roughness:0.5, } );
+	const {geometry, lowPoly} = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, true, 4)
+	// const collisionGeometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, true)
+	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.65, roughness:0.5,wireframe:false } );
+
 	const mesh = new THREE.Mesh( geometry, material ) ;
-	return mesh
+	return {mesh: mesh, wall: lowPoly}
 }
 
 function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_height = 0.1, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = false, color = 0xffffff, maze) {
@@ -312,7 +352,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	const scaleY = (total_height+padding)/total_height
 	const scaleZ = (total_depth+padding)/total_depth
 	cube.scale.set(scaleX, scaleY, scaleZ)
-	group.add(cube)
+
 
 	// console.log("EFFECTIVE: "+effective_depth)
 	// console.log("DISTANCE: "+distance_between_walls)
@@ -338,39 +378,48 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	
 	let startZ = -effective_depth/2 + wall_thickness/2
 
+	group.add(cube)
 	let eps = 0.01
 	for(let i = 0; i <= depth	; i++){
-		
-		const wall = createWallMesh(total_width + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color)	
-		wall.position.z = startZ- (i==0?eps:0)
-		group.add(wall)
+		const {mesh, wall} = createWallMesh(total_width + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color)	
+		// console.log(wall)
+		mesh.position.z = startZ- (i==0?eps:0)
+		group.add(mesh)
+		wall.translate(0,0,mesh.position.z)
 		walls.push(wall)
-		startZ += distance_between_walls
 
+		startZ += distance_between_walls
 	}
 	let startX = -effective_width/2 + wall_thickness/2
 	for(let i = 0; i <= width; i++){
 	
-		const wall = createWallMesh(total_depth + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color)	
+		const {mesh, wall} = createWallMesh(total_depth + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color)	
 	
 
+		mesh.rotateY(Math.PI/2)
+		mesh.position.x = startX - (i==0?eps:0)
+		group.add(mesh)
 		wall.rotateY(Math.PI/2)
-		wall.position.x = startX - (i==0?eps:0)
-		group.add(wall)
+		wall.translate(mesh.position.x,0,0)
+
 		walls.push(wall)
+
 		startX += distance_between_walls
 	}
 
 	let startY = -effective_height/2 +  wall_thickness/2
 	for(let i = 0; i <= height; i++){
 	
-		const wall = createWallMesh(total_width + wall_height*2, total_depth + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color)	
+		const {mesh, wall} = createWallMesh(total_width + wall_height*2, total_depth + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color)	
 
 
+		mesh.rotateX(Math.PI/2)
+		mesh.position.y = startY	- (i==0?eps:0) 
+		group.add(mesh)
 		wall.rotateX(Math.PI/2)
-		wall.position.y = startY	- (i==0?eps:0) 
-		group.add(wall)
+		wall.translate(0,mesh.position.y,0)
 		walls.push(wall)
+
 		startY += distance_between_walls
 	}
 
