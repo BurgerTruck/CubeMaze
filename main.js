@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as CANNON from 'cannon';
-import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import { MathUtils } from 'three';
 import { createMazeCubeGroup } from './maze_model.js';
 import { generateMaze } from './maze.js';
 import { initializeInputHandler } from './input_handler.js';
@@ -108,37 +106,52 @@ const maze = new Maze()
 scene.add(maze.model)
 initializeInputHandler(maze, scene)
 
+///////// CONSTANTS ///////
+const GRAVITY = new CANNON.Vec3(0, -1, 0)
+const BALL_RADIUS = 0.025
+const BALLBODY_FRICTION = 0
+const BALLBODY_RESTITUTION = 0.25
+const GLASSBODY_FRICTION = 0.25
+const GLASSBODY_RESTITUTION = 0
+const GLASS_OPACITY = 0.35
+// for turning of cube
+const ROTATE_SENSITIVITY = 0.002
+const ROTATE_THRESHOLD = 1
+// speed of ball
+const VELOCITY_THRESHOLD = 0.25
+
+
 /////////// PHYSICS ///////////
 /////NOTE: There is a bug where sometimes the ball will pass through collisions: may have something to do with timestep/force/ idk
 
 // Physics world
 const world = new CANNON.World();
-world.gravity = new CANNON.Vec3(0, -1, -1)
+world.gravity = GRAVITY
 world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 // Ball mesh
-const ballRadius = 0.025
-const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
 const ballMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
 }); 
 const ball = new THREE.Mesh(ballGeometry, ballMat)
-ball.position.set(0, 0, 0.25)
+//TODO: need to change later
+ball.position.set(0, 0, 0.2)
 scene.add(ball);
 
 // Ball body
 const ballBody = new CANNON.Body({
-    shape: new CANNON.Sphere(ballRadius),
+    shape: new CANNON.Sphere(BALL_RADIUS),
     material: new CANNON.Material({
-        friction: 0,
-        restitution: 0
+        friction: BALLBODY_FRICTION,
+        restitution: BALLBODY_RESTITUTION
     }),
     mass: 1,
 })
 ballBody.position.set(ball.position.x, ball.position.y, ball.position.z)
 ballBody.quaternion.set(ball.quaternion.x, ball.quaternion.y, ball.quaternion.z, ball.quaternion.w)
-
+ballBody.allowSleep = false;
 // Add ball body to world after rendering wall bodiies
 world.addBody(ballBody);
 
@@ -149,10 +162,11 @@ const glassCubeHeight = maze.height * maze.cell_size + 20 * maze.wall_thickness;
 const glassCubeDepth = maze.depth * maze.cell_size + 20 * maze.wall_thickness;
 
 // Create the glass box
-const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
+const glassMaterial = new THREE.MeshPhongMaterial({ transparent: true, opacity: GLASS_OPACITY });
 const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
 const glassBox = new THREE.Mesh(glassGeometry, glassMaterial);
 glassBox.position.set(0, 0, 0); // Adjust position as needed
+scene.add(glassBox)
 
 // Define positions and orientations of the glass planes
 const planePositions = [
@@ -169,8 +183,8 @@ const planePositions = [
 const glassBody = new CANNON.Body({
         mass: 0,
         material: new CANNON.Material({
-            friction: 0,
-            restitution: 0
+            friction: GLASSBODY_FRICTION,
+            restitution: GLASSBODY_RESTITUTION
         }),
 });
 
@@ -205,8 +219,6 @@ function extractVerticesAndIndices(geometry) {
 // Assign a collision body for each wall
 maze.walls.forEach(wall => {
 
-    // WORKING: very slow for now
-    // Create the wall shape based on the width, height and depth of the wall
     const wallData = extractVerticesAndIndices(wall);
     let vertices = wallData.vertices
     let indices = wallData.indices
@@ -223,29 +235,37 @@ world.addBody(glassBody)
 
 let isMouseDown = false;
 let startX, startY;
-const sensitivity = 0.001
 
 
 function rotateCube(event){
     if(isMouseDown){
-        const deltaX = event.clientX - startX;
-        const deltaY = event.clientY - startY;
+        let deltaX = event.clientX - startX;
+        let deltaY = event.clientY - startY;
 
+        // TODO: limit the speed of the turning of the cube
+        if(Math.abs(deltaX) > ROTATE_THRESHOLD){
+            deltaX = Math.sign(deltaX) * ROTATE_THRESHOLD;
+        }
+
+        if(Math.abs(deltaY) > ROTATE_THRESHOLD){
+            deltaY = Math.sign(deltaY) * ROTATE_THRESHOLD;
+        }
+        
         // Update maze mesh rotation
-        maze.model.rotation.y += deltaX * sensitivity;
-        maze.model.rotation.x += deltaY * sensitivity;
+        maze.model.rotation.y += deltaX * ROTATE_SENSITIVITY;
+        maze.model.rotation.x += deltaY * ROTATE_SENSITIVITY;
        
         // Update glass mesh rotation
-        glassBox.rotation.y += deltaX * sensitivity;
-        glassBox.rotation.x += deltaY * sensitivity;
+        glassBox.rotation.y += deltaX * ROTATE_SENSITIVITY;
+        glassBox.rotation.x += deltaY * ROTATE_SENSITIVITY;
         
         // Update physics of cubes bodies
+        updateBallBody()
         updateCubeBodies()
-
+        
         // Update start positions for the next iteration
         startX = event.clientX;
         startY = event.clientY;
-
     }
 
 }
@@ -268,13 +288,29 @@ document.addEventListener('mouseup', (event) => {
 document.addEventListener('mousemove', rotateCube);
 
 function updateCubeBodies(){
+    cannonDebugger.update()
     glassBody.quaternion.copy(glassBox.quaternion)
-    // glassBody.position.copy(glassBox.position)
+    glassBody.position.copy(glassBox.position)
 }
 
+
 function updateBallBody(){
+    if (Math.abs(ballBody.velocity.x) > VELOCITY_THRESHOLD) {
+        ballBody.velocity.x = Math.sign(ballBody.velocity.x) * VELOCITY_THRESHOLD;
+    }
+    if (Math.abs(ballBody.velocity.y) > VELOCITY_THRESHOLD) {
+        ballBody.velocity.y = Math.sign(ballBody.velocity.y) * VELOCITY_THRESHOLD;
+    }
+    if (Math.abs(ballBody.velocity.z) > VELOCITY_THRESHOLD) {
+        ballBody.velocity.z = Math.sign(ballBody.velocity.z) * VELOCITY_THRESHOLD;
+    }
+
+    if(Math.abs(ballBody.velocity.x) > VELOCITY_THRESHOLD){
+        console.log('TOO FAST BRO')
+    }
+    cannonDebugger.update()
     ball.position.copy(ballBody.position);
-    // ball.quaternion.copy(ballBody.quaternion); 
+    ball.quaternion.copy(ballBody.quaternion); 
 }
 
 
@@ -284,12 +320,10 @@ const cannonDebugger = new CannonDebugger(scene, world, {
 
 function animate() {
 	requestAnimationFrame( animate );
-    world.step(1/30); // Step the physics world
-    
+    world.step(1/60); // Step the physics world
     updateBallBody()
-
+    
 	renderer.render( scene, camera );
-    cannonDebugger.update()
 	// controls.update()
     
 }
