@@ -124,7 +124,7 @@ const ballMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
 }); 
 const ball = new THREE.Mesh(ballGeometry, ballMat)
-ball.position.set(0, 0, 0.25)
+ball.position.set(0, 0.20, 0)
 scene.add(ball);
 
 // Ball body
