@@ -221,6 +221,7 @@ world.addBody(glassBody)
 
 
 let isMouseDown = false;
+let isShiftPressed = false;
 let startX, startY;
 const sensitivity = 0.1
 
@@ -246,10 +247,16 @@ function rotateCube(event){
         cameraUp.normalize();
 
         var torque = new CANNON.Vec3(0, 0, 0)
-        var torqueX = new CANNON.Vec3(cameraUp.x * deltaX, cameraUp.y * deltaX, cameraUp.z * deltaX)
-        var torqueY = new CANNON.Vec3(cameraRight.x * deltaY, cameraRight.y * deltaY, cameraRight.z * deltaY)
-        torque.vadd(torqueX, torque)
-        torque.vadd(torqueY, torque)
+        if(isShiftPressed){
+            var torqueX = new CANNON.Vec3(cameraDirection.x * deltaX, cameraDirection.y * deltaX, cameraDirection.z * deltaX)
+            torque.vadd(torqueX, torque)
+        }else{
+            var torqueX = new CANNON.Vec3(cameraUp.x * deltaX, cameraUp.y * deltaX, cameraUp.z * deltaX)
+            var torqueY = new CANNON.Vec3(cameraRight.x * deltaY, cameraRight.y * deltaY, cameraRight.z * deltaY)
+            torque.vadd(torqueX, torque)
+            torque.vadd(torqueY, torque)
+        }
+
 
         glassBody.angularVelocity.copy(torque)
         // glassBody.torque.copy(torque)
@@ -283,12 +290,21 @@ document.addEventListener('mouseup', (event) => {
 
 document.addEventListener('mousemove', rotateCube);
 
-function updateCubeBodies(){
-    glassBody.quaternion.copy(glassBox.quaternion)
+document.addEventListener('keydown', function(event){
+    if(event.shiftKey)isShiftPressed = true;
+});
+
+document.addEventListener('keyup', function(event){
+    if(!event.shiftKey)isShiftPressed = false;
+});
+
+function updateMazeMesh(){
+    maze.model.position.copy(glassBody.position)
+    maze.model.quaternion.copy(glassBody.quaternion)
     // glassBody.position.copy(glassBox.position)
 }
 
-function updateBallBody(){
+function updateBallMesh(){
     ball.position.copy(ballBody.position);
     // ball.quaternion.copy(ballBody.quaternion); 
 }
@@ -301,9 +317,9 @@ const cannonDebugger = new CannonDebugger(scene, world, {
 function animate() {
 	requestAnimationFrame( animate );
     update();    
-    updateBallBody()
+    updateBallMesh()
 
-    maze.model.quaternion.copy(glassBody.quaternion)
+    updateMazeMesh();
 	renderer.render( scene, camera );
     cannonDebugger.update()
 	// controls.update()
