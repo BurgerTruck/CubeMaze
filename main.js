@@ -113,7 +113,7 @@ initializeInputHandler(maze, scene)
 
 // Physics world
 const world = new CANNON.World();
-world.gravity = new CANNON.Vec3(0, -1, -1)
+world.gravity = new CANNON.Vec3(0, 0, 0)
 world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
@@ -134,7 +134,7 @@ const ballBody = new CANNON.Body({
         friction: 0,
         restitution: 0
     }),
-    mass: 1,
+    mass: 1000,
 })
 ballBody.position.set(ball.position.x, ball.position.y, ball.position.z)
 ballBody.quaternion.set(ball.quaternion.x, ball.quaternion.y, ball.quaternion.z, ball.quaternion.w)
@@ -167,7 +167,7 @@ const planePositions = [
 
 // Define a body for the glass
 const glassBody = new CANNON.Body({
-        mass: 0,
+        mass: 99999999,
         material: new CANNON.Material({
             friction: 0,
             restitution: 0
@@ -210,7 +210,6 @@ maze.walls.forEach(wall => {
     const wallData = extractVerticesAndIndices(wall);
     let vertices = wallData.vertices
     let indices = wallData.indices
-    console.log(vertices, indices)
     const wallShape = new CANNON.ConvexPolyhedron(vertices, indices);
 
     // Add wall shape to the glass body to make them into 1 shape
@@ -223,31 +222,48 @@ world.addBody(glassBody)
 
 let isMouseDown = false;
 let startX, startY;
-const sensitivity = 0.001
+const sensitivity = 0.1
+
 
 
 function rotateCube(event){
     if(isMouseDown){
-        const deltaX = event.clientX - startX;
-        const deltaY = event.clientY - startY;
+        const deltaX = (event.clientX - startX) *sensitivity;
+        const deltaY = (event.clientY - startY) * sensitivity;
 
-        // Update maze mesh rotation
-        maze.model.rotation.y += deltaX * sensitivity;
-        maze.model.rotation.x += deltaY * sensitivity;
-       
-        // Update glass mesh rotation
-        glassBox.rotation.y += deltaX * sensitivity;
-        glassBox.rotation.x += deltaY * sensitivity;
+        var cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
         
-        // Update physics of cubes bodies
-        updateCubeBodies()
+        // Calculate the camera's right vector using cross product
+        var cameraRight = new THREE.Vector3();
+        cameraRight.crossVectors(cameraDirection, camera.up);
+        
+        // Normalize the resulting vector
+        cameraRight.normalize();
+        
+        var cameraUp = new THREE.Vector3();
+        cameraUp.crossVectors(cameraRight, cameraDirection);
+        cameraUp.normalize();
 
-        // Update start positions for the next iteration
+        var torque = new CANNON.Vec3(0, 0, 0)
+        var torqueX = new CANNON.Vec3(cameraUp.x * deltaX, cameraUp.y * deltaX, cameraUp.z * deltaX)
+        var torqueY = new CANNON.Vec3(cameraRight.x * deltaY, cameraRight.y * deltaY, cameraRight.z * deltaY)
+        torque.vadd(torqueX, torque)
+        torque.vadd(torqueY, torque)
+
+        glassBody.angularVelocity.copy(torque)
+        // glassBody.torque.copy(torque)
+        // glassBody.torque.set(torqueX.x + torqueY.x,torqueX.y + torqueY.y,torqueX.z + torqueY.z)
+        // glassBody.torque.vadd(, glassBody.torque)
         startX = event.clientX;
         startY = event.clientY;
 
     }
+}
 
+function update(){
+    ballBody.applyLocalForce(new CANNON.Vec3(0, -1000, 0), new CANNON.Vec3(0, 0, 0))
+    world.step(1/60);
 }
 
 document.addEventListener('mousedown', (event) => {
@@ -284,10 +300,10 @@ const cannonDebugger = new CannonDebugger(scene, world, {
 
 function animate() {
 	requestAnimationFrame( animate );
-    world.step(1/30); // Step the physics world
-    
+    update();    
     updateBallBody()
 
+    maze.model.quaternion.copy(glassBody.quaternion)
 	renderer.render( scene, camera );
     cannonDebugger.update()
 	// controls.update()
