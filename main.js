@@ -202,18 +202,24 @@ function extractVerticesAndIndices(geometry) {
 }
 
 
+function createWallShape(body, box){
+    // box.geometry.computeBoundingBox();
+    const width = box.geometry.parameters.width/2
+    const height = box.geometry.parameters.height/2
+    const depth = box.geometry.parameters.depth/2
+    const worldPosition = new THREE.Vector3();
+    box.getWorldPosition(worldPosition);
+
+    const wallShape = new CANNON.Box(new CANNON.Vec3(width, height, depth));
+    body.addShape(wallShape, worldPosition, box.quaternion);
+}
+//Function to extract vertices and indices from extrudeGeometry
 // Assign a collision body for each wall
+
 maze.walls.forEach(wall => {
-
-    // WORKING: very slow for now
-    // Create the wall shape based on the width, height and depth of the wall
-    const wallData = extractVerticesAndIndices(wall);
-    let vertices = wallData.vertices
-    let indices = wallData.indices
-    const wallShape = new CANNON.ConvexPolyhedron(vertices, indices);
-
+    createWallShape(glassBody, wall)
+    // console.log(wall)
     // Add wall shape to the glass body to make them into 1 shape
-    glassBody.addShape(wallShape, wall.position, wall.quaternion)
 })
 
 // Add the physics body to the world
