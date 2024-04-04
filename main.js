@@ -68,7 +68,10 @@ scene.add(light6)
 // gg.userData.materials = meshes.map(m=>m.material)
 /// controls.panSpeed = 5
 
-
+var ballMesh;
+var ballBody;
+var glassMesh;
+var glassBody;
 class Maze{
 	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
 		this.width = width
@@ -101,106 +104,71 @@ class Maze{
         this.walls = mazeData.walls;
         this.model = mazeData.group;
 		scene.add(this.model)
+
+        createBall()
+        createCubeBody()
 	}
 }
 
-const maze = new Maze()
-scene.add(maze.model)
-initializeInputHandler(maze, scene)
+const BALL_RADIUS = 0.025
+const BALL_MASS = 1000
+const GLASSBODY_MASS = 99999999
+const DEFAULT_BODY_MATERIAL = new CANNON.Material({
+    friction: 0,
+    restitution: 0
+})
+const SENSITIVITY = 0.1
 
-/////////// PHYSICS ///////////
-/////NOTE: There is a bug where sometimes the ball will pass through collisions: may have something to do with timestep/force/ idk
+let isMouseDown = false;
+let isShiftPressed = false;
+let startX, startY;
 
-// Physics world
+
+// Initialize Physics world
 const world = new CANNON.World();
 world.gravity = new CANNON.Vec3(0, 0, 0)
 world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
-// Ball mesh
-const ballRadius = 0.025
-const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
-const ballMat = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-}); 
-const ball = new THREE.Mesh(ballGeometry, ballMat)
-ball.position.set(0, 1, 0)
-scene.add(ball);
+const maze = new Maze()
+scene.add(maze.model)
+createBall()
+createCubeBody()
+initializeInputHandler(maze, scene)
 
-// Ball body
-const ballBody = new CANNON.Body({
-    shape: new CANNON.Sphere(ballRadius),
-    material: new CANNON.Material({
-        friction: 0,
-        restitution: 0
-    }),
-    mass: 1000,
-})
-ballBody.position.set(ball.position.x, ball.position.y, ball.position.z)
-ballBody.quaternion.set(ball.quaternion.x, ball.quaternion.y, ball.quaternion.z, ball.quaternion.w)
-
-// Add ball body to world after rendering wall bodiies
-world.addBody(ballBody);
-
-////////////// GLASS LAYER ///////////
-// For now, might need to change later
-const glassCubeWidth = maze.width * maze.cell_size + 20 * maze.wall_thickness;
-const glassCubeHeight = maze.height * maze.cell_size + 20 * maze.wall_thickness;
-const glassCubeDepth = maze.depth * maze.cell_size + 20 * maze.wall_thickness;
-
-// Create the glass box
-const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
-const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
-const glassBox = new THREE.Mesh(glassGeometry, glassMaterial);
-glassBox.position.set(0, 0, 0); // Adjust position as needed
-scene.add(glassBox)
-
-// Define positions and orientations of the glass planes
-const planePositions = [
-    new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
-    new CANNON.Vec3(0, 0, -glassCubeDepth),  // Back
-    new CANNON.Vec3(-glassCubeWidth, 0, 0),  // Left
-    new CANNON.Vec3(glassCubeWidth, 0, 0),   // Right
-    new CANNON.Vec3(0, glassCubeHeight, 0),  // Top
-    new CANNON.Vec3(0, -glassCubeHeight, 0)  // Bottom
-];
-
-// Define a body for the glass
-const glassBody = new CANNON.Body({
-        mass: 99999999,
-        material: new CANNON.Material({
-            friction: 0,
-            restitution: 0
-        }),
-});
-
-// Add shapes on the body to make it a 'cross' shape
-planePositions.forEach(position =>{
-    const glassShape = new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2))
-    glassBody.addShape(glassShape, position)
-})
-
-
-//Function to extract vertices and indices from extrudeGeometry
-function extractVerticesAndIndices(geometry) {
-    const position = geometry.getAttribute('position');
-    const vertices = [];
-    const indices = [];
-
-    for (let i = 0; i < position.count; i++) {
-        const x = position.getX(i);
-        const y = position.getY(i);
-        const z = position.getZ(i);
-        vertices.push(new CANNON.Vec3(x, y, z));
-
-        if( i % 3 == 0){
-            indices.push([i, i + 1, i + 2]);
-        }
+// Creates ball mesh and body
+function createBall(){
+    // Removes mesh and body when they are existing
+    if(ballMesh){
+        scene.remove(ballMesh)
     }
-    
-    return { vertices: vertices, indices: indices };
-}
+    if(ballBody){
+        world.remove(ballBody)
+    }
 
+    // Create new ball mesh
+    const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+    const ballMat = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+    }); 
+    ballMesh = new THREE.Mesh(ballGeometry, ballMat)
+    ballMesh.position.set(0, 1, 0)
+    scene.add(ballMesh);
+
+    // Create new ball body
+    ballBody = new CANNON.Body({
+        shape: new CANNON.Sphere(BALL_RADIUS),
+        material: DEFAULT_BODY_MATERIAL,
+        mass: BALL_MASS,
+    })
+
+    // Set position and quaternion of physics body accordingly
+    ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
+    ballBody.quaternion.set(ballMesh.quaternion.x, ballMesh.quaternion.y, ballMesh.quaternion.z, ballMesh.quaternion.w)
+
+    // Add ball body to world after rendering ball body
+    world.addBody(ballBody);
+}
 
 function createWallShape(body, box){
     // box.geometry.computeBoundingBox();
@@ -213,30 +181,64 @@ function createWallShape(body, box){
     const wallShape = new CANNON.Box(new CANNON.Vec3(width, height, depth));
     body.addShape(wallShape, worldPosition, box.quaternion);
 }
-//Function to extract vertices and indices from extrudeGeometry
-// Assign a collision body for each wall
 
-maze.walls.forEach(wall => {
-    createWallShape(glassBody, wall)
-    // console.log(wall)
-    // Add wall shape to the glass body to make them into 1 shape
-})
+// Creates glass layer mesh, body and maze body
+function createCubeBody(){
+    // Check if glass mesh and glass body exists
+    if(glassMesh){
+        scene.remove(glassMesh)
+    }
+    if(glassBody){
+        world.remove(glassBody)
+    }
+    
+    // Create the glass mesh
+    const glassCubeWidth = maze.width * maze.cell_size + 20 * maze.wall_thickness;
+    const glassCubeHeight = maze.height * maze.cell_size + 20 * maze.wall_thickness;
+    const glassCubeDepth = maze.depth * maze.cell_size + 20 * maze.wall_thickness;
 
-// Add the physics body to the world
-world.addBody(glassBody)
+    const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
+    const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
+    glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
+    glassMesh.position.set(0, 0, 0); // Adjust position as needed
+    scene.add(glassMesh)
 
+    // Define positions and orientations of the glass planes
+    const planePositions = [
+        new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
+        new CANNON.Vec3(0, 0, -glassCubeDepth),  // Back
+        new CANNON.Vec3(-glassCubeWidth, 0, 0),  // Left
+        new CANNON.Vec3(glassCubeWidth, 0, 0),   // Right
+        new CANNON.Vec3(0, glassCubeHeight, 0),  // Top
+        new CANNON.Vec3(0, -glassCubeHeight, 0)  // Bottom
+    ];
 
-let isMouseDown = false;
-let isShiftPressed = false;
-let startX, startY;
-const sensitivity = 0.1
+    // Create the glass body
+    glassBody = new CANNON.Body({
+        mass: GLASSBODY_MASS,
+        material: DEFAULT_BODY_MATERIAL
+    });
 
+    // Add shapes on the body to make it a 'cross' shape
+    planePositions.forEach(position =>{
+        const glassShape = new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2))
+        glassBody.addShape(glassShape, position)
+    })
+
+    // Add bodies for the maze
+    maze.walls.forEach(wall => {
+        createWallShape(glassBody, wall)
+    })
+
+    // Add the physics body to the world
+    world.addBody(glassBody)
+}
 
 
 function rotateCube(event){
     if(isMouseDown){
-        const deltaX = (event.clientX - startX) *sensitivity;
-        const deltaY = (event.clientY - startY) * sensitivity;
+        const deltaX = (event.clientX - startX) *SENSITIVITY;
+        const deltaY = (event.clientY - startY) * SENSITIVITY;
 
         var cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
@@ -262,7 +264,6 @@ function rotateCube(event){
             torque.vadd(torqueX, torque)
             torque.vadd(torqueY, torque)
         }
-
 
         glassBody.angularVelocity.copy(torque)
         // glassBody.torque.copy(torque)
@@ -307,19 +308,19 @@ document.addEventListener('keyup', function(event){
 function updateMazeMesh(){
     maze.model.position.copy(glassBody.position)
     maze.model.quaternion.copy(glassBody.quaternion)
-    glassBox.position.copy(glassBody.position)
-    glassBox.quaternion.copy(glassBody.quaternion)
+    glassMesh.position.copy(glassBody.position)
+    glassMesh.quaternion.copy(glassBody.quaternion)
 }
 
 function updateBallMesh(){
-    ball.position.copy(ballBody.position);
-    // ball.quaternion.copy(ballBody.quaternion); 
+    ballMesh.position.copy(ballBody.position);
+    // ballMesh.quaternion.copy(ballBody.quaternion); 
 }
 
 
 // Hide later only for debugging collisions
-const cannonDebugger = new CannonDebugger(scene, world, {
-})
+// const cannonDebugger = new CannonDebugger(scene, world, {
+// })
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -328,7 +329,7 @@ function animate() {
 
     updateMazeMesh();
 	renderer.render( scene, camera );
-    cannonDebugger.update()
+    // cannonDebugger.update()
 	// controls.update()
     
 }
