@@ -124,7 +124,7 @@ const ballMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
 }); 
 const ball = new THREE.Mesh(ballGeometry, ballMat)
-ball.position.set(0, 0.20, 0)
+ball.position.set(0, 1, 0)
 scene.add(ball);
 
 // Ball body
@@ -153,10 +153,10 @@ const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 
 const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
 const glassBox = new THREE.Mesh(glassGeometry, glassMaterial);
 glassBox.position.set(0, 0, 0); // Adjust position as needed
+scene.add(glassBox)
 
 // Define positions and orientations of the glass planes
 const planePositions = [
-    new CANNON.Vec3(0, 0, 0),  // Center
     new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
     new CANNON.Vec3(0, 0, -glassCubeDepth),  // Back
     new CANNON.Vec3(-glassCubeWidth, 0, 0),  // Left
@@ -307,7 +307,8 @@ document.addEventListener('keyup', function(event){
 function updateMazeMesh(){
     maze.model.position.copy(glassBody.position)
     maze.model.quaternion.copy(glassBody.quaternion)
-    // glassBody.position.copy(glassBox.position)
+    glassBox.position.copy(glassBody.position)
+    glassBox.quaternion.copy(glassBody.quaternion)
 }
 
 function updateBallMesh(){
