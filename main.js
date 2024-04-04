@@ -119,6 +119,7 @@ const DEFAULT_BODY_MATERIAL = new CANNON.Material({
 })
 const SENSITIVITY = 0.1
 
+
 let isMouseDown = false;
 let isShiftPressed = false;
 let startX, startY;
@@ -152,7 +153,8 @@ function createBall(){
         color: 0xff0000,
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
-    ballMesh.position.set(0, 1, 0)
+    console.log(maze.start_cell)
+    ballMesh.position.set(maze.start_cell.position)
     scene.add(ballMesh);
 
     // Create new ball body
@@ -193,9 +195,9 @@ function createCubeBody(){
     }
     
     // Create the glass mesh
-    const glassCubeWidth = maze.width * maze.cell_size + 20 * maze.wall_thickness;
-    const glassCubeHeight = maze.height * maze.cell_size + 20 * maze.wall_thickness;
-    const glassCubeDepth = maze.depth * maze.cell_size + 20 * maze.wall_thickness;
+    const glassCubeWidth = maze.width * maze.cell_size + 200 * maze.cell_size * maze.wall_thickness;
+    const glassCubeHeight = maze.height * maze.cell_size + 200 * maze.cell_size * maze.wall_thickness;
+    const glassCubeDepth = maze.depth * maze.cell_size + 200 * maze.cell_size * maze.wall_thickness;
 
     const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
     const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
