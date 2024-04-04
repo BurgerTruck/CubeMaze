@@ -72,6 +72,33 @@ var ballMesh;
 var ballBody;
 var glassMesh;
 var glassBody;
+function createRectangleWithHole(width, height, depth, holeRadius, holeX, holeY) {
+
+    var shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(0, height);
+    shape.lineTo(width, height);
+    shape.lineTo(width, 0);
+    
+    var holePath = new THREE.Path();
+    holePath.moveTo(holeX, holeY );
+    holePath.arc( 0, 0, holeRadius, 0, 2 * Math.PI, false);
+    
+    shape.holes.push(holePath);
+    let geometry = new THREE.ExtrudeGeometry( shape, {
+      depth: depth,
+      bevelEnabled:false,
+      steps: 1,
+      curveSegments: 32
+    });
+
+    // geometry.center();
+    return geometry
+}
+const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
+const testMesh = new THREE.Mesh(testGeometry, new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: false}));
+// testMesh.position.set(0,0,0)
+scene.add(testMesh);
 class Maze{
 	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
 		this.width = width
@@ -86,8 +113,8 @@ class Maze{
 		this.maze = generateMaze(width, height, depth)
 		this.start_cell = this.maze.start
 		this.end_cell = this.maze.end
-
-		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
+        // console.log(this.start_cell.position)
+		console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
 		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
         const data = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
 		this.model = data.group
@@ -154,7 +181,7 @@ function createBall(){
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
     console.log(maze.start_cell)
-    ballMesh.position.set(maze.start_cell.position)
+    ballMesh.position.set(0, 0, 0.20)
     scene.add(ballMesh);
 
     // Create new ball body
