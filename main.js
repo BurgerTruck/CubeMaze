@@ -70,8 +70,29 @@ scene.add(light6)
 
 var ballMesh;
 var ballBody;
-var glassMesh;
 var glassBody;
+
+function extractVerticesAndIndices(geometry) {
+    const position = geometry.getAttribute('position');
+    const vertices = [];
+    const indices = [];
+
+    for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i);
+        const y = position.getY(i);
+        const z = position.getZ(i);
+        vertices.push(new CANNON.Vec3(x, y, z));
+
+        if( i % 3 == 0){
+            indices.push([i, i + 1, i + 2]);
+        }
+    }
+    
+    return { vertices: vertices, indices: indices };
+}
+//TEST
+
+// scene.add(testMesh);
 class Maze{
 	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
 		this.width = width
@@ -86,18 +107,24 @@ class Maze{
 		this.maze = generateMaze(width, height, depth)
 		this.start_cell = this.maze.start
 		this.end_cell = this.maze.end
+
+        // console.log(this.start_cell.position)
+		console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
+
         
 
 		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
+
 		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
         const data = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
+        this.boxHoleMesh = data.boxHoleMesh
 		this.model = data.group
         this.walls = data.walls
 	}
 	
 	updateMaze(){
 		this.maze = generateMaze(this.width, this.height, this.depth)
-        this.start_cell = this.maze.start
+        this.start_cell = this.maze.start;
         this.end_cell = this.maze.end
 	}
 
@@ -106,6 +133,7 @@ class Maze{
 		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
         this.walls = mazeData.walls;
         this.model = mazeData.group;
+        this.boxHoleMesh = mazeData.boxHoleMesh 
 		scene.add(this.model)
 
         createBall(maze)
@@ -131,6 +159,7 @@ let startX, startY;
 
 // Initialize Physics world
 const world = new CANNON.World();
+
 world.gravity = new CANNON.Vec3(0, 0, 0)
 world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
@@ -139,6 +168,20 @@ const maze = new Maze()
 scene.add(maze.model)
 createBall(maze)
 createCubeBody()
+
+// {
+//     //TEST
+//     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
+//     // testMesh.position.set(0,0,0)
+//     const v = extractVerticesAndIndices(testGeometry);
+//     const testBody = new CANNON.Body({
+//         shape: new CANNON.ConvexPolyhedron(v.vertices, v.indices),
+//         mass: 999999999999999
+//     })
+//     testBody.position.set(0,0,0);
+//     world.addBody(testBody)
+// }
+
 initializeInputHandler(maze, scene)
 
 // Function that gets the inversion; params can be width or height
@@ -230,6 +273,7 @@ function createBall(maze){
         color: 0xff0000,
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
+
     // TODO: Get and set initial position
     const position = getPosition(maze, START)
 
@@ -266,9 +310,6 @@ function createWallShape(body, box){
 // Creates glass layer mesh, body and maze body
 function createCubeBody(){
     // Check if glass mesh and glass body exists
-    if(glassMesh){
-        scene.remove(glassMesh)
-    }
     if(glassBody){
         world.remove(glassBody)
     }
@@ -278,20 +319,16 @@ function createCubeBody(){
     const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
     const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
 
-    const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
-    const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
-    glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
-    glassMesh.position.set(0, 0, 0); // Adjust position as needed
-    scene.add(glassMesh)
 
     // Define positions and orientations of the glass planes
     const planePositions = [
-        new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
         new CANNON.Vec3(0, 0, -glassCubeDepth),  // Back
         new CANNON.Vec3(-glassCubeWidth, 0, 0),  // Left
+        new CANNON.Vec3(0, -glassCubeHeight, 0),  // Bottom
         new CANNON.Vec3(glassCubeWidth, 0, 0),   // Right
+        new CANNON.Vec3(0, 0, glassCubeDepth),   // Front
         new CANNON.Vec3(0, glassCubeHeight, 0),  // Top
-        new CANNON.Vec3(0, -glassCubeHeight, 0)  // Bottom
+
     ];
 
     // Create the glass body
@@ -299,12 +336,17 @@ function createCubeBody(){
         mass: GLASSBODY_MASS,
         material: DEFAULT_BODY_MATERIAL
     });
-
+    for(let i = 0; i < planePositions.length; i++){
+        if(i==maze.end_cell.face){
+            const extracted = extractVerticesAndIndices(maze.boxHoleMesh.geometry)
+            const glassShape = new CANNON.ConvexPolyhedron(extracted.vertices, extracted.indices)
+            glassBody.addShape(glassShape, planePositions[i], maze.boxHoleMesh.quaternion)
+            continue;  
+        }
+        glassBody.addShape(new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2)), planePositions[i])
+    }
     // Add shapes on the body to make it a 'cross' shape
-    planePositions.forEach(position =>{
-        const glassShape = new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2))
-        glassBody.addShape(glassShape, position)
-    })
+
 
     // Add bodies for the maze
     maze.walls.forEach(wall => {
@@ -312,7 +354,7 @@ function createCubeBody(){
     })
 
     // Add the physics body to the world
-    world.addBody(glassBody)
+    world.addBody(glassBody)    
 }
 
 
@@ -357,7 +399,7 @@ function rotateCube(event){
 }
 
 function update(){
-    ballBody.applyLocalForce(new CANNON.Vec3(0, -1000, 0), new CANNON.Vec3(0, 0, 0))
+    ballBody.applyLocalForce(new CANNON.Vec3(0, -10000, 0), new CANNON.Vec3(0, 0, 0))
     world.step(1/60);
 }
 
@@ -380,6 +422,17 @@ document.addEventListener('mousemove', rotateCube);
 
 document.addEventListener('keydown', function(event){
     if(event.shiftKey)isShiftPressed = true;
+    //listen for wasd key
+    if(event.key === 'w'){
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -1000), new CANNON.Vec3(0, 0, 0))
+    }else if(event.key === 'a'){
+        ballBody.applyLocalForce(new CANNON.Vec3(-1000, 0, 0), new CANNON.Vec3(0, 0, 0))
+    }else if(event.key === 'd'){
+        ballBody.applyLocalForce(new CANNON.Vec3(1000, 0, ), new CANNON.Vec3(0, 0, 0))
+    }else if(event.key === 's'){
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, 1000), new CANNON.Vec3(0, 0, 0))
+    }
+
 });
 
 document.addEventListener('keyup', function(event){
@@ -389,8 +442,6 @@ document.addEventListener('keyup', function(event){
 function updateMazeMesh(){
     maze.model.position.copy(glassBody.position)
     maze.model.quaternion.copy(glassBody.quaternion)
-    glassMesh.position.copy(glassBody.position)
-    glassMesh.quaternion.copy(glassBody.quaternion)
 }
 
 function updateBallMesh(){
@@ -400,8 +451,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-// const cannonDebugger = new CannonDebugger(scene, world, {
-// })
+const cannonDebugger = new CannonDebugger(scene, world, {
+})
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -410,7 +461,7 @@ function animate() {
 
     updateMazeMesh();
 	renderer.render( scene, camera );
-    // cannonDebugger.update()
+    cannonDebugger.update()
 	// controls.update()
     
 }

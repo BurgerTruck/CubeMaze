@@ -1,41 +1,6 @@
 export{createMazeCubeGroup}
 import {generateMaze} from './maze.js'
 import * as THREE from 'three';
-function createBoxWithRoundedEdges( width, height, depth, radius, segments = 64, quadRadius = 0.00001 ) {
-	let shape = new THREE.Shape();
-
-	const startX = radius
-	const startY = radius
-	const endX = width - radius
-	const endY = height -radius
-	
-    shape.moveTo(startX, startY + quadRadius);
-    shape.lineTo(startX, endY-quadRadius);
-	shape.quadraticCurveTo(startX, endY, startX + quadRadius, endY )
-	// shape.lineTo(endX/2, endY)
-	// shape.lineTo(endX/2, endY/2)
-	// shape.lineTo(endX - quadRadius, endY/2)
-	// shape.lineTo(endX - quadRadius, endY)
-	shape.lineTo(endX - quadRadius, endY)
-	shape.quadraticCurveTo(endX, endY, endX, endY - quadRadius)
-	shape.lineTo(endX, startY + quadRadius)
-	shape.quadraticCurveTo(endX, startY, endX - quadRadius, startY)
-	shape.lineTo(startX + quadRadius, startY)
-	shape.quadraticCurveTo(startX, startY, startX, startY + quadRadius)
-	
-	let geometry = new THREE.ExtrudeGeometry( shape, {
-	  depth: depth - radius * 2,
-	  bevelEnabled: false,
-	  bevelSegments: segments,
-	  steps: 1,
-	  bevelSize: radius,
-	  bevelThickness: radius,
-	  curveSegments: segments
-	});
-	geometry.center();
-	// geometry.boundingBox
-	return geometry;
-}
 function getIterationDetails(sideWalls, traversalInformation, planeIndex){
  
 	let {wallIndex, reverseTraversal, vertical, reversePlaneIndex} = traversalInformation
@@ -165,6 +130,40 @@ function getWallBoxes(width, height, depth, wallHeight, wallThickness,distance_b
 	}
 	return boxes;
 	
+}
+
+function createRectangleWithHoleGeometry(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments=  8) {
+
+    var shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(0, height);
+    shape.lineTo(width, height);
+    shape.lineTo(width, 0);
+	
+
+    if(hole.radius > 0){
+		var holePath = new THREE.Path();
+		holePath.moveTo(hole.x, hole.y );
+		holePath.arc( 0, 0, hole.radius, 0, 2 * Math.PI, false);
+		shape.holes.push(holePath);
+	}
+
+    let geometry = new THREE.ExtrudeGeometry( shape, {
+      depth: depth,
+      bevelEnabled:false,
+      steps: 1,
+      curveSegments: segments
+    });
+
+    geometry.center();
+    return geometry
+}
+function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8){
+
+	const geometry = createRectangleWithHoleGeometry(width, height, depth,hole, segments)
+	const glassMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.5})
+	const mesh = new THREE.Mesh(geometry, glassMaterial);
+	return mesh;
 }
 
 function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled) {
@@ -431,68 +430,159 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	let startZ = -effective_depth/2 + wall_thickness/2
 
 	// group.add(cube)
+	let holeRadius = (cell_size - wall_thickness) * 0.8/2
+	const glass_thickness = wall_thickness;
+	const size_offset = glass_thickness*2
+	const half_glass_thickness = glass_thickness/2
+	let glassStart = glass_thickness + wall_height
+	
+
+	function getHole(row, col){
+		return { x: glassStart + col * distance_between_walls + cell_size/2,y: glassStart + row * distance_between_walls + cell_size/2, radius: cell_size/2}
+	}
+
+	// maze.end.face = 3;
+	// maze.end.position = [0,8]
+	let boxHoleMesh = null
 	let eps = 0.01
-	for(let i = 0; i <= depth	; i++){
-		const {mesh, boxes} = createWallMesh(total_width + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color)	
-		// console.log(wall)
-		mesh.position.z = startZ- (i==0?eps:0)
-		group.add(mesh)
+	{
+		const mesh_width = total_width + wall_height*2
+		const mesh_height = total_height + wall_height*2
+		for(let i = 0; i <= depth	; i++){
+			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color)	
+			// console.log(wall)
+			mesh.position.z = startZ- (i==0?eps:0)
+			group.add(mesh)	
 
-		boxes.position.copy(mesh.position)
-		startZ += distance_between_walls
-		boxes.traverse(function(e){
-			if(e instanceof THREE.Mesh){
-				walls.push(e)
-				// console.log(e.position)	
-			}
-		})
+			boxes.position.copy(mesh.position)
+			startZ += distance_between_walls
+			boxes.traverse(function(e){
+				if(e instanceof THREE.Mesh){
+					walls.push(e)
+					// console.log(e.position)	
+				}
+			})
+		}
+		let holeNeg = { x: 0, y: 0, radius: 0.0}
+		let holePos = { x: 0, y: 0, radius: 0.0}		
+		if(maze.end.face==0){
+			const row = height - maze.end.position[0]-1;
+			const col = maze.end.position[1];
+			holeNeg = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_depth + 2*wall_height, holeNeg, 4)
+		}else if(maze.end.face == 4){
+			const row = maze.end.position[0];
+			const col = maze.end.position[1];
+			holePos = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_depth + 2*wall_height, holePos, 4)
+		}
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg);
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		glassMeshPos.position.z = startZ+ half_glass_thickness
+		glassMeshNeg.position.z = -startZ - half_glass_thickness
+		group.add(glassMeshNeg)
+		group.add(glassMeshPos)
 	}
+
 	let startX = -effective_width/2 + wall_thickness/2
-	for(let i = 0; i <= width; i++){
-	
-		const {mesh, boxes} = createWallMesh(total_depth + wall_height*2, total_height + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color)	
-	
+	{
+		const mesh_width = total_depth + wall_height*2
+		const mesh_height = total_height + wall_height*2
+		for(let i = 0; i <= width; i++){
+		
+			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color)	
 
-		mesh.rotateY(Math.PI/2)
-		mesh.position.x = startX - (i==0?eps:0)
-		group.add(mesh)
-		boxes.rotateY(Math.PI/2)
-		boxes.position.copy(mesh.position)
+			mesh.rotateY(Math.PI/2)
+			mesh.position.x = startX - (i==0?eps:0)
+			group.add(mesh)
+			boxes.rotateY(Math.PI/2)
+			boxes.position.copy(mesh.position)
 
 
 
-		startX += distance_between_walls
-		boxes.traverse(function(e){
-			if(e instanceof THREE.Mesh){
-				e.quaternion.copy(mesh.quaternion)
-				walls.push(e)
-			}
-		})
+			startX += distance_between_walls
+			boxes.traverse(function(e){
+				if(e instanceof THREE.Mesh){
+					e.quaternion.copy(mesh.quaternion)
+					walls.push(e)
+				}
+			})
+		}
+
+		let holeNeg = { x: 0, y: 0, radius: 0.0}
+		let holePos = { x: 0, y: 0, radius: 0.0}		
+		if(maze.end.face==1){
+			const row = height - maze.end.position[1]-1;
+			const col = depth - maze.end.position[0] - 1;
+			holeNeg = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_width + 2* wall_height, holeNeg, 4)
+			boxHoleMesh.rotateY(Math.PI/2)
+		}else if(maze.end.face == 3){
+			const row = maze.end.position[1];
+			const col = depth - maze.end.position[0] - 1;
+			holePos = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_width + 2*wall_height, holePos, 4)
+			boxHoleMesh.rotateY(Math.PI/2)
+		}
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg)
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		glassMeshPos.position.x = startX + half_glass_thickness
+		glassMeshNeg.position.x = -startX  - half_glass_thickness
+		glassMeshNeg.rotateY(Math.PI/2)
+		glassMeshPos.rotateY(Math.PI/2)
+		group.add(glassMeshNeg)
+		group.add(glassMeshPos)
 	}
 
-	let startY = -effective_height/2 +  wall_thickness/2
-	for(let i = 0; i <= height; i++){
-	
-		const {mesh, boxes} = createWallMesh(total_width + wall_height*2, total_depth + wall_height*2, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color)	
+	{
+		const mesh_width = total_width + wall_height*2
+		const mesh_height = total_depth + wall_height*2
+		let startY = -effective_height/2 +  wall_thickness/2
+		for(let i = 0; i <= height; i++){
+		
+			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color)	
+			mesh.rotateX(Math.PI/2)
+			mesh.position.y = startY	- (i==0?eps:0) 
+			group.add(mesh)
 
-
-		mesh.rotateX(Math.PI/2)
-		mesh.position.y = startY	- (i==0?eps:0) 
-		group.add(mesh)
-
-		boxes.position.copy(mesh.position)
-		boxes.rotateX(Math.PI/2)	
-		startY += distance_between_walls
-		boxes.traverse(function(e){
-			if(e instanceof THREE.Mesh){
-				e.quaternion.copy(mesh.quaternion)
-				walls.push(e)
-			}
-		})
+			boxes.position.copy(mesh.position)
+			boxes.rotateX(Math.PI/2)	
+			startY += distance_between_walls
+			boxes.traverse(function(e){
+				if(e instanceof THREE.Mesh){
+					e.quaternion.copy(mesh.quaternion)
+					walls.push(e)
+				}
+			})
+		}
+		let holeNeg = { x: 0, y: 0, radius: 0.0}
+		let holePos = { x: 0, y: 0, radius: 0.0}		
+		if(maze.end.face==2){
+			const row = maze.end.position[0];
+			const col = maze.end.position[1];
+			holeNeg = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_height + 2*wall_height, holeNeg, 4)
+			boxHoleMesh.rotateX(Math.PI/2)
+		}else if(maze.end.face == 5){
+			const row = depth - maze.end.position[0]-1;
+			const col = maze.end.position[1];
+			holePos = getHole(row, col)
+			boxHoleMesh = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, total_height + 2*wall_height, holePos, 4)
+			boxHoleMesh.rotateX(Math.PI/2)
+		}
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg)
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		glassMeshPos.position.y = startY + half_glass_thickness
+		glassMeshNeg.position.y = -startY  - half_glass_thickness
+		glassMeshNeg.rotateX(Math.PI/2)
+		glassMeshPos.rotateX(Math.PI/2)
+		group.add(glassMeshNeg)
+		group.add(glassMeshPos)
 	}
 	walls.push(cube)
 	return {
 		group: group,
-		walls: walls
+		walls: walls,
+		boxHoleMesh: boxHoleMesh
 	}
 }

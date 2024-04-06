@@ -277,7 +277,7 @@ function generateMaze(width, height, depth){
     connectVerticalHorizontal(sideCells[4], sideCells[1], 0, -1, true);
 
     // Initiating DFS
-    const startSide = 2; // or choose randomly: Math.floor(Math.random() * 6);
+    const startSide = 5; // or choose randomly: Math.floor(Math.random() * 6);
     const startRow = Math.floor(Math.random() * sideCells[startSide].length);
     const startCol = Math.floor(Math.random() * sideCells[startSide][0].length);
 
