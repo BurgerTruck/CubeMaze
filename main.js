@@ -138,6 +138,7 @@ class Maze{
 
         createBall(maze)
         createCubeBody()
+        addStars(200)
 	}
 }
 // Constants
@@ -168,6 +169,7 @@ world.defaultContactMaterial.friction = 1;
 
 const maze = new Maze()
 scene.add(maze.model)
+addStars(200)
 createBall(maze)
 createCubeBody()
 
@@ -185,19 +187,28 @@ createCubeBody()
 // }
 
 initializeInputHandler(maze, scene)
+// TODO: Render different backgrounds each time
+function renderBackground(){
+    
+}
 
-// Function that gets the inversion; params can be width or height
-// e.g. if width is 9:
-// 0 -> 8
-// 1 -> 7
-// 2 -> 6
-function addStars(){
-    const geometry = new THREE.SphereGeometry(0.25, 24, 24)
-    const material = new THREE.MeshStandardMaterial({color: 0xffffff})
-    const star = new THREE.Mesh(geometry, material)
 
-    const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
-} 
+// TODO: Add stars to scene
+function addStars(numStars) {
+    const geometry = new THREE.SphereGeometry(0.25, 24, 24);
+    const colors = [0xffffff, 0x00FFFF, 0x800080, 0xFFA500, 0xFF0000, 0xFFFF66]; // Colors: white, cyan, purple, orange, red, pale yellow
+
+    for (let i = 0; i < numStars; i++) {
+        const material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+        const star = new THREE.Mesh(geometry, material);
+
+        let [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+        star.position.set(x, y, z);
+        scene.add(star);
+    }
+}
+
+// Function that gets the exact coordinates from start and end pos
 function getPosition(maze, type){
     // Might also need depth in top bottom left right faces
 
@@ -222,7 +233,6 @@ function getPosition(maze, type){
 
     switch(face){
         case 0: // BACK: same rows invert columns
-        // TODO: Fix
         //ROWS - z ; COLS - x
             y = (maze.height - row- 1- Math.floor(maze.height/2)) * maze.cell_size
             x = ((maze.width - col - 1)- Math.floor(maze.width / 2)) * maze.cell_size
@@ -282,7 +292,6 @@ function createBall(maze){
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
 
-    // TODO: Get and set initial position
     const position = getPosition(maze, START)
 
     ballMesh.position.set(position.x, position.y, position.z)
@@ -459,8 +468,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-const cannonDebugger = new CannonDebugger(scene, world, {
-})
+// const cannonDebugger = new CannonDebugger(scene, world, {
+// })
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -469,7 +478,7 @@ function animate() {
 
     updateMazeMesh();
 	renderer.render( scene, camera );
-    cannonDebugger.update()
+    // cannonDebugger.update()
 	// controls.update()
     
 }
