@@ -159,9 +159,16 @@ function createRectangleWithHoleGeometry(width, height, depth,hole = {x: 0, y: 0
     return geometry
 }
 function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8){
-
+    const glassMaterial = new THREE.MeshStandardMaterial({ 
+        roughness: 0.1,   // Smooth surface
+        transparent: true, 
+        opacity: 0.5, 
+        envMapIntensity: 1, // Adjust environment map intensity for reflections
+        metalness: 0,     // Not a metal
+        color: 0xffffff,  // Color of the glass
+    });
 	const geometry = createRectangleWithHoleGeometry(width, height, depth,hole, segments)
-	const glassMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.5})
+	// const glassMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.5})
 	const mesh = new THREE.Mesh(geometry, glassMaterial);
 	return mesh;
 }

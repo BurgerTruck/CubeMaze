@@ -327,18 +327,6 @@ function createCubeBody(){
     const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
     const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
 
-    const glassMaterial = new THREE.MeshStandardMaterial({ 
-        roughness: 0.1,   // Smooth surface
-        transparent: true, 
-        opacity: 0.5, 
-        envMapIntensity: 1, // Adjust environment map intensity for reflections
-        metalness: 0,     // Not a metal
-        color: 0xffffff,  // Color of the glass
-    });
-    const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
-    glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
-    glassMesh.position.set(0, 0, 0); // Adjust position as needed
-    scene.add(glassMesh)
 
     // Define positions and orientations of the glass planes
     const planePositions = [
