@@ -73,22 +73,18 @@ var ballBody;
 var glassBody;
 
 function extractVerticesAndIndices(geometry) {
-    const position = geometry.getAttribute('position');
+    const position = geometry.attributes.position.array
     const vertices = [];
     const indices = [];
-
-    for (let i = 0; i < position.count; i++) {
-        const x = position.getX(i);
-        const y = position.getY(i);
-        const z = position.getZ(i);
+    
+    for (let i = 0; i < position.length; i+=3) {
+        const x = position[i];
+        const y = position[i+1];
+        const z = position[i+2];
         vertices.push(new CANNON.Vec3(x, y, z));
-
-        if( i % 3 == 0){
-            indices.push([i, i + 1, i + 2]);
-        }
     }
     
-    return { vertices: vertices, indices: indices };
+    return { vertices: vertices, indices: geometry.index.array };
 }
 //TEST
 
@@ -104,22 +100,12 @@ class Maze{
 		this.wall_height = cell_size
 		this.bevelEnabled = bevelEnabled
 		this.color = color
-		this.maze = generateMaze(width, height, depth)
-		this.start_cell = this.maze.start
-		this.end_cell = this.maze.end
-
+        this.updateMaze();
         // console.log(this.start_cell.position)
 		console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
 
-        
-
-		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
-
-		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
-        const data = createMazeCubeGroup(width, height, depth, radiusPercent, this.wall_height, wall_thickness, cell_size, bevelEnabled, color, this.maze)
-        this.boxHoleMesh = data.boxHoleMesh
-		this.model = data.group
-        this.walls = data.walls
+    
+        this.updateModel(scene)
 	}
 	
 	updateMaze(){
@@ -131,30 +117,43 @@ class Maze{
 	updateModel(scene){
 		scene.remove(this.model)
 		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
+
         this.walls = mazeData.walls;
         this.model = mazeData.group;
-        this.boxHoleMesh = mazeData.boxHoleMesh 
+        this.boxHoleGroup = mazeData.boxHoleGroup 
 		scene.add(this.model)
 
-        createBall(maze)
-        createCubeBody()
+
+        BALL_FORCE = BALL_MASS * GRAVITY_ACCELERATION * this.cell_size;
+        console.log("FORCE: "+BALL_FORCE)
+
+        MAX_SPEED  = GRAVITY_ACCELERATION * this.cell_size * MAX_SPEED_MULTIPLIER;
+        console.log("MAX_SPEED: "+MAX_SPEED)
+        createBall(this)
+        createCubeBody(this)
 	}
 }
 // Constants
-const BALL_RADIUS = 0.03
+
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
+const GRAVITY_ACCELERATION = 10 // in cells
+const MAX_SPEED_MULTIPLIER = 0.20 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
+let BALL_RADIUS = 0.03 // UPDATED IN createBall() FUNCTION
+let MAX_SPEED  = 0; //UPDATED IN udpateModel() FUNCTION
+let BALL_FORCE = 0; //UPDATED IN updateModel() FUNCTION
 const DEFAULT_BODY_MATERIAL = new CANNON.Material({
-    friction: 0,
+    friction: 0.25,
     restitution: 0
 })
-const SENSITIVITY = 0.1
+const SENSITIVITY = 0.08
 const START = 'START'
 const END = 'END'
 
 let isMouseDown = false;
 let isShiftPressed = false;
-let startX, startY;
+let currX, currY;
+let prevX, prevY; 
 
 // Textures
 const moonTexture = new THREE.TextureLoader().load('./assets/moon.jpg')
@@ -167,9 +166,6 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-scene.add(maze.model)
-createBall(maze)
-createCubeBody()
 
 // {
 //     //TEST
@@ -274,7 +270,7 @@ function createBall(maze){
     if(ballBody){
         world.remove(ballBody)
     }
-
+    BALL_RADIUS = (maze.cell_size - maze.wall_thickness)*0.69/2
     // Create new ball mesh
     const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
     const ballMat = new THREE.MeshBasicMaterial({
@@ -294,7 +290,7 @@ function createBall(maze){
         material: DEFAULT_BODY_MATERIAL,
         mass: BALL_MASS,
     })
-
+    ballBody.linearDamping = 0.9
     // Set position and quaternion of physics body accordingly
     ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
     ballBody.quaternion.set(ballMesh.quaternion.x, ballMesh.quaternion.y, ballMesh.quaternion.z, ballMesh.quaternion.w)
@@ -316,7 +312,7 @@ function createWallShape(body, box){
 }
 
 // Creates glass layer mesh, body and maze body
-function createCubeBody(){
+function createCubeBody(maze){
     // Check if glass mesh and glass body exists
     if(glassBody){
         world.remove(glassBody)
@@ -346,9 +342,21 @@ function createCubeBody(){
     });
     for(let i = 0; i < planePositions.length; i++){
         if(i==maze.end_cell.face){
-            const extracted = extractVerticesAndIndices(maze.boxHoleMesh.geometry)
-            const glassShape = new CANNON.ConvexPolyhedron(extracted.vertices, extracted.indices)
-            glassBody.addShape(glassShape, planePositions[i], maze.boxHoleMesh.quaternion)
+            const boxHoleGroup = maze.boxHoleGroup;
+            // boxHoleGroup.position.set(planePositions[i].x, planePositions[i].y, planePositions[i].z)
+            boxHoleGroup.traverse(rectangle => {
+                if(rectangle instanceof THREE.Mesh){
+                    console.log(rectangle.geometry)
+                    const glassShape = new CANNON.Box(new CANNON.Vec3(rectangle.geometry.parameters.width/2, rectangle.geometry.parameters.height/2, rectangle.geometry.parameters.depth/2))
+                    const worldPosition = new THREE.Vector3();
+                    rectangle.getWorldPosition(worldPosition);
+                    glassBody.addShape(glassShape, worldPosition, boxHoleGroup.quaternion)
+
+                }
+            })
+            // const extracted = extractVerticesAndIndices(maze.boxHoleMesh.geometry)
+            // const glassShape = new CANNON.ConvexPolyhedron(extracted.vertices, extracted.indices)
+            // glassBody.addShape(glassShape, planePositions[i], maze.boxHoleMesh.quaternion)
             continue;  
         }
         glassBody.addShape(new CANNON.Box(new CANNON.Vec3(glassCubeWidth/2, glassCubeHeight/2, glassCubeDepth/2)), planePositions[i])
@@ -366,24 +374,26 @@ function createCubeBody(){
 }
 
 
-function rotateCube(event){
+function rotateCube(){
     if(isMouseDown){
-        const deltaX = (event.clientX - startX) *SENSITIVITY;
-        const deltaY = (event.clientY - startY) * SENSITIVITY;
+        const deltaX = (currX - prevX) *SENSITIVITY;
+        const deltaY = (currY - prevY) * SENSITIVITY;
 
         var cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
-        
+
         // Calculate the camera's right vector using cross product
         var cameraRight = new THREE.Vector3();
         cameraRight.crossVectors(cameraDirection, camera.up);
-        
+        cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
         // Normalize the resulting vector
         cameraRight.normalize();
         
         var cameraUp = new THREE.Vector3();
-        cameraUp.crossVectors(cameraRight, cameraDirection);
-        cameraUp.normalize();
+        // cameraUp.crossVectors(cameraRight, cameraDirection);
+        // cameraUp.normalize();
+        cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+        cameraUp.normalize()
 
         var torque = new CANNON.Vec3(0, 0, 0)
         if(isShiftPressed){
@@ -397,25 +407,45 @@ function rotateCube(event){
         }
 
         glassBody.angularVelocity.copy(torque)
-        // glassBody.torque.copy(torque)
+        // glassBody.torque.copy(torque.scale(GLASSBODY_MASS))
         // glassBody.torque.set(torqueX.x + torqueY.x,torqueX.y + torqueY.y,torqueX.z + torqueY.z)
         // glassBody.torque.vadd(, glassBody.torque)
-        startX = event.clientX;
-        startY = event.clientY;
+        prevX = currX ;
+        prevY = currY;
 
+    }else{
+        glassBody.angularVelocity.set(0,0,0)
     }
 }
 
 function update(){
-    ballBody.applyLocalForce(new CANNON.Vec3(0, -10000, 0), new CANNON.Vec3(0, 0, 0))
+    rotateCube()
+    ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE, 0), ballBody.position)
+    let speed = ballBody.velocity.norm()
+    if(speed> MAX_SPEED){
+        ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
+        speed = MAX_SPEED;
+    }
+    const angularSpeed = speed/BALL_RADIUS
+    const angularVelocity = new THREE.Vector3()
+    angularVelocity.crossVectors(ballBody.velocity, new CANNON.Vec3(0,1,0))
+    angularVelocity.normalize();
+    angularVelocity.multiplyScalar(angularSpeed)
+    ballBody.angularVelocity.copy(angularVelocity)
+
+    glassBody.position.set(0,0,0);
     world.step(1/60);
+
+    
+
 }
 
 document.addEventListener('mousedown', (event) => {
     if (event.button === 0) { // Left mouse button
+
+        prevX = event.clientX;
+        prevY = event.clientY;
         isMouseDown = true;
-        startX = event.clientX;
-        startY = event.clientY;
     }
 });
 
@@ -423,10 +453,17 @@ document.addEventListener('mousedown', (event) => {
 document.addEventListener('mouseup', (event) => {
     if (event.button === 0) { // Left mouse button
         isMouseDown = false;
+        
     }
+    // isMouseDown = false;
 });
 
-document.addEventListener('mousemove', rotateCube);
+document.addEventListener('mousemove', (event)=>{
+    // if(isMouseDown){
+        currX = event.clientX;
+        currY = event.clientY;
+    // }
+});
 
 document.addEventListener('keydown', function(event){
     if(event.shiftKey)isShiftPressed = true;

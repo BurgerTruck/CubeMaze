@@ -7,14 +7,14 @@ export function initializeInputHandler(maze, scene) {
         $('#cube-height-value').text(maze.height);
         $('#cube-depth-value').text(maze.depth);
 
-        $('#bevel-radius').prop('checked', maze.bevel_enabled);
-        $('#bevel-radius-value').text(maze.radiusPercent);
+        // $('#bevel-radius').prop('checked', maze.bevel_enabled);
+        // $('#bevel-radius-value').text(maze.radiusPercent);
         $('#wall-thickness-value').text(maze.wall_thickness);
         $('#cell-size-value').text(maze.cell_size);
         $('#wall-height-value').text(maze.wall_height);
         $('#cube-color').val(maze.color);
 
-        $('#bevel-radius').val(maze.radiusPercent);
+        // $('#bevel-radius').val(maze.radiusPercent);
         $('#wall-thickness').val(maze.wall_thickness);
         $('#cell-size').val(maze.cell_size);
         $('#wall-height').val(maze.wall_height);
@@ -42,13 +42,13 @@ export function initializeInputHandler(maze, scene) {
         });
 
         $('#radius, #wall-thickness, #cell-size, #cube-color').on('input', function() {
-            maze.radiusPercent = parseFloat($('#radius').val());
+            // maze.radiusPercent = parseFloat($('#radius').val());
             maze.wall_thickness = parseFloat($('#wall-thickness').val());
             maze.cell_size = parseFloat($('#cell-size').val());
             maze.color = $('#cube-color').val();
             maze.wall_height = maze.cell_size;
 
-            $('#radius-value').text(maze.radiusPercent);
+            // $('#radius-value').text(maze.radiusPercent);
             $('#wall-thickness-value').text(maze.wall_thickness);
             $('#cell-size-value').text(maze.cell_size);
 
