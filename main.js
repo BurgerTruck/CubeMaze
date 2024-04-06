@@ -86,6 +86,7 @@ class Maze{
 		this.maze = generateMaze(width, height, depth)
 		this.start_cell = this.maze.start
 		this.end_cell = this.maze.end
+        
 
 		// console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
 		// console.log("END: "+ this.end_cell.face +"," + this.end_cell.position)
@@ -96,6 +97,8 @@ class Maze{
 	
 	updateMaze(){
 		this.maze = generateMaze(this.width, this.height, this.depth)
+        this.start_cell = this.maze.start
+        this.end_cell = this.maze.end
 	}
 
 	updateModel(scene){
@@ -105,12 +108,12 @@ class Maze{
         this.model = mazeData.group;
 		scene.add(this.model)
 
-        createBall()
+        createBall(maze)
         createCubeBody()
 	}
 }
 
-const BALL_RADIUS = 0.025
+const BALL_RADIUS = 0.03
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
 const DEFAULT_BODY_MATERIAL = new CANNON.Material({
@@ -118,7 +121,8 @@ const DEFAULT_BODY_MATERIAL = new CANNON.Material({
     restitution: 0
 })
 const SENSITIVITY = 0.1
-
+const START = 'START'
+const END = 'END'
 
 let isMouseDown = false;
 let isShiftPressed = false;
@@ -133,12 +137,85 @@ world.defaultContactMaterial.friction = 1;
 
 const maze = new Maze()
 scene.add(maze.model)
-createBall()
+createBall(maze)
 createCubeBody()
 initializeInputHandler(maze, scene)
 
+// Function that gets the inversion; params can be width or height
+// e.g. if width is 9:
+// 0 -> 8
+// 1 -> 7
+// 2 -> 6
+
+function getPosition(maze, type){
+    // Might also need depth in top bottom left right faces
+
+    // Get face, row col
+    let x = 0, y = 0, z = 0;
+    let face, row, col;
+
+    if(type == START){
+        face = maze.start_cell.face
+        row = maze.start_cell.position[0]
+        col = maze.start_cell.position[1]
+    }
+    else{
+        face = maze_end_cell.face
+        row = maze.end_cell.position[0]
+        col = maze.end_cell.position[1]
+    }
+    
+    console.log('Face: ', face)
+    console.log('Row: ', row)
+    console.log('Col: ', col)
+
+    switch(face){
+        case 0: // BACK: same rows invert columns
+        // TODO: Fix
+        //ROWS - z ; COLS - x
+            y = (maze.height - row- 1- Math.floor(maze.height/2)) * maze.cell_size
+            x = ((maze.width - col - 1)- Math.floor(maze.width / 2)) * maze.cell_size
+            z = (maze.cell_size * -maze.depth / 2 * 1.1)
+            break;
+
+        case 1: // LEFT: cols->rows(same) rows->cols(same)
+        //ROWS - y ; COLS - z
+            y = ((maze.depth - row - 1) - Math.floor(maze.depth / 2)) * maze.cell_size 
+            z = (col - Math.floor(maze.height/2)) * maze.cell_size
+            x = (maze.cell_size * -maze.width / 2 * 1.1)
+            break;
+
+        case 2: // BOTTOM
+            z = (maze.depth - row - 1- Math.floor(maze.depth / 2)) * maze.cell_size
+            x = (col- Math.floor(maze.width / 2)) * maze.cell_size
+            y = (maze.cell_size * -maze.height / 2 * 1.1)
+            break;
+
+        case 3: // RIGHT
+            y = ((maze.depth - row - 1) - Math.floor(maze.depth / 2)) * maze.cell_size 
+            z = ((maze.height - col - 1) - Math.floor(maze.height/2)) * maze.cell_size
+            x = (maze.cell_size * maze.width / 2 * 1.1)
+            break;
+
+        case 4: // FRONT
+            y = ((maze.height - row - 1) - Math.floor(maze.height/2)) * maze.cell_size
+            x = (col - Math.floor(maze.width / 2)) * maze.cell_size
+            z = (maze.cell_size * maze.depth / 2 * 1.1)
+            break;
+
+        case 5: // TOP
+            z = (row - Math.floor(maze.depth / 2)) * maze.cell_size 
+            x = (col - Math.floor(maze.width / 2)) * maze.cell_size
+            y =  (maze.cell_size * maze.height / 2 * 1.1)
+            break;
+    }
+    const position = new THREE.Vector3(x, y, z)
+    console.log('Coordinates: ', position)
+    return position
+}
+
 // Creates ball mesh and body
-function createBall(){
+function createBall(maze){
     // Removes mesh and body when they are existing
     if(ballMesh){
         scene.remove(ballMesh)
@@ -153,7 +230,10 @@ function createBall(){
         color: 0xff0000,
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
-    ballMesh.position.set(maze.start_cell.position)
+    // TODO: Get and set initial position
+    const position = getPosition(maze, START)
+
+    ballMesh.position.set(position.x, position.y, position.z)
     scene.add(ballMesh);
 
     // Create new ball body
