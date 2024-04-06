@@ -130,6 +130,7 @@ class Maze{
 
 	updateModel(scene){
 		scene.remove(this.model)
+        renderBackground(scene)
 		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
         this.walls = mazeData.walls;
         this.model = mazeData.group;
@@ -168,6 +169,7 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
+renderBackground(scene)
 scene.add(maze.model)
 addStars(200)
 createBall(maze)
@@ -187,13 +189,20 @@ createCubeBody()
 // }
 
 initializeInputHandler(maze, scene)
-// TODO: Render different backgrounds each time
-function renderBackground(){
-    
+
+function renderBackground(scene){
+    // List of possible background file names
+    const backgrounds = ['space1.jpg', 'space2.jpg', 'space3.jpg'];
+
+    const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+
+    const textureLoader = new THREE.TextureLoader();
+    const spaceTexture = textureLoader.load(`assets/${randomBackground}`);
+
+    scene.background = spaceTexture
+
 }
 
-
-// TODO: Add stars to scene
 function addStars(numStars) {
     const geometry = new THREE.SphereGeometry(0.25, 24, 24);
     const colors = [0xffffff, 0x00FFFF, 0x800080, 0xFFA500, 0xFF0000, 0xFFFF66]; // Colors: white, cyan, purple, orange, red, pale yellow
