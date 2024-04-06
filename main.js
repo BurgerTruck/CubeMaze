@@ -116,13 +116,13 @@ class Maze{
 
 	updateModel(scene){
 		scene.remove(this.model)
+        renderBackground(scene)
 		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
 
         this.walls = mazeData.walls;
         this.model = mazeData.group;
         this.boxHoleGroup = mazeData.boxHoleGroup 
 		scene.add(this.model)
-
 
         BALL_FORCE = BALL_MASS * GRAVITY_ACCELERATION * this.cell_size;
         console.log("FORCE: "+BALL_FORCE)
@@ -131,6 +131,8 @@ class Maze{
         console.log("MAX_SPEED: "+MAX_SPEED)
         createBall(this)
         createCubeBody(this)
+
+        addStars(200)
 	}
 }
 // Constants
@@ -166,7 +168,7 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-
+renderBackground(scene)
 // {
 //     //TEST
 //     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
@@ -182,18 +184,34 @@ const maze = new Maze()
 
 initializeInputHandler(maze, scene)
 
-// Function that gets the inversion; params can be width or height
-// e.g. if width is 9:
-// 0 -> 8
-// 1 -> 7
-// 2 -> 6
-function addStars(){
-    const geometry = new THREE.SphereGeometry(0.25, 24, 24)
-    const material = new THREE.MeshStandardMaterial({color: 0xffffff})
-    const star = new THREE.Mesh(geometry, material)
+function renderBackground(scene){
+    // List of possible background file names
+    const backgrounds = ['space1.jpg', 'space2.jpg', 'space3.jpg'];
 
-    const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
-} 
+    const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+
+    const textureLoader = new THREE.TextureLoader();
+    const spaceTexture = textureLoader.load(`assets/${randomBackground}`);
+
+    scene.background = spaceTexture
+
+}
+
+function addStars(numStars) {
+    const geometry = new THREE.SphereGeometry(0.25, 24, 24);
+    const colors = [0xffffff, 0x00FFFF, 0x800080, 0xFFA500, 0xFF0000, 0xFFFF66]; // Colors: white, cyan, purple, orange, red, pale yellow
+
+    for (let i = 0; i < numStars; i++) {
+        const material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+        const star = new THREE.Mesh(geometry, material);
+
+        let [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+        star.position.set(x, y, z);
+        scene.add(star);
+    }
+}
+
+// Function that gets the exact coordinates from start and end pos
 function getPosition(maze, type){
     // Might also need depth in top bottom left right faces
 
@@ -218,7 +236,6 @@ function getPosition(maze, type){
 
     switch(face){
         case 0: // BACK: same rows invert columns
-        // TODO: Fix
         //ROWS - z ; COLS - x
             y = (maze.height - row- 1- Math.floor(maze.height/2)) * maze.cell_size
             x = ((maze.width - col - 1)- Math.floor(maze.width / 2)) * maze.cell_size
@@ -278,7 +295,6 @@ function createBall(maze){
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
 
-    // TODO: Get and set initial position
     const position = getPosition(maze, START)
 
     ballMesh.position.set(position.x, position.y, position.z)
@@ -496,8 +512,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-const cannonDebugger = new CannonDebugger(scene, world, {
-})
+// const cannonDebugger = new CannonDebugger(scene, world, {
+// })
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -506,7 +522,7 @@ function animate() {
 
     updateMazeMesh();
 	renderer.render( scene, camera );
-    cannonDebugger.update()
+    // cannonDebugger.update()
 	// controls.update()
     
 }
