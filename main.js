@@ -112,7 +112,7 @@ class Maze{
         createCubeBody()
 	}
 }
-
+// Constants
 const BALL_RADIUS = 0.03
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
@@ -128,6 +128,8 @@ let isMouseDown = false;
 let isShiftPressed = false;
 let startX, startY;
 
+// Textures
+const moonTexture = new THREE.TextureLoader().load('./assets/moon.jpg')
 
 // Initialize Physics world
 const world = new CANNON.World();
@@ -146,7 +148,13 @@ initializeInputHandler(maze, scene)
 // 0 -> 8
 // 1 -> 7
 // 2 -> 6
+function addStars(){
+    const geometry = new THREE.SphereGeometry(0.25, 24, 24)
+    const material = new THREE.MeshStandardMaterial({color: 0xffffff})
+    const star = new THREE.Mesh(geometry, material)
 
+    const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+} 
 function getPosition(maze, type){
     // Might also need depth in top bottom left right faces
 
@@ -227,7 +235,7 @@ function createBall(maze){
     // Create new ball mesh
     const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
     const ballMat = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
+        map: moonTexture,
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
     // TODO: Get and set initial position
@@ -278,7 +286,14 @@ function createCubeBody(){
     const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
     const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
 
-    const glassMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
+    const glassMaterial = new THREE.MeshStandardMaterial({ 
+        roughness: 0.1,   // Smooth surface
+        transparent: true, 
+        opacity: 0.5, 
+        envMapIntensity: 1, // Adjust environment map intensity for reflections
+        metalness: 0,     // Not a metal
+        color: 0xffffff,  // Color of the glass
+    });
     const glassGeometry = new THREE.BoxGeometry(glassCubeWidth, glassCubeHeight, glassCubeDepth);
     glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
     glassMesh.position.set(0, 0, 0); // Adjust position as needed
@@ -395,7 +410,7 @@ function updateMazeMesh(){
 
 function updateBallMesh(){
     ballMesh.position.copy(ballBody.position);
-    // ballMesh.quaternion.copy(ballBody.quaternion); 
+    ballMesh.quaternion.copy(ballBody.quaternion); 
 }
 
 
