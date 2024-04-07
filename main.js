@@ -7,12 +7,20 @@ import { createMazeCubeGroup } from './maze_model.js';
 import { generateMaze } from './maze.js';
 import { initializeInputHandler } from './input_handler.js';
 import CannonDebugger from 'cannon-es-debugger';
+import { RGBELoader } from 'three/examples/jsm/Addons.js';
 
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
 const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
 const controls = new OrbitControls( camera, renderer.domElement );
+const hdrTextureURL = new URL('./assets/silver_nebulae.hdr', import.meta.url)
+const loader = new RGBELoader();
+loader.load(hdrTextureURL, function(texture){
+    texture.mapping = THREE.EquirectangularReflectionMapping
+    scene.background = texture;
+})
+
 
 controls.mouseButtons = {
 	RIGHT: THREE.MOUSE.ROTATE,
@@ -22,8 +30,8 @@ controls.mouseButtons = {
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-const axesHelper = new THREE.AxesHelper( 10);
-scene.add( axesHelper );
+// const axesHelper = new THREE.AxesHelper( 10);
+// scene.add( axesHelper );
 
 camera.position.z = 2
 
