@@ -346,9 +346,9 @@ function createCubeBody(maze){
     }
     
     // Create the glass mesh
-    const glassCubeWidth = maze.width * maze.cell_size + 190 * maze.cell_size;
-    const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size;
-    const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size;
+    const glassCubeWidth = maze.width * maze.cell_size + 190 * maze.cell_size * 0.01;
+    const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size * 0.01;
+    const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size * 0.01;
 
 
     // Define positions and orientations of the glass planes
@@ -523,8 +523,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-// const cannonDebugger = new CannonDebugger(scene, world, {
-// })
+const cannonDebugger = new CannonDebugger(scene, world, {
+})
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -533,7 +533,7 @@ function animate() {
 
     updateMazeMesh();
 	renderer.render( scene, camera );
-    // cannonDebugger.update()
+    cannonDebugger.update()
 	// controls.update()
     
 }
