@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@pmndrs/vanilla": "^1.15.1",
     "cannon": "^0.6.2",
     "cannon-es": "^0.20.0",
     "cannon-es-debugger": "^1.0.0",
