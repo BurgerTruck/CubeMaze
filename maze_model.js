@@ -150,6 +150,29 @@ function getWallBoxes(width, height, depth, wallHeight, wallThickness,distance_b
 	
 }
 
+function createHoleGeometry(width, height, depth, hole = {x: 0, y: 0, radius: 0.0}, segments=  8) {
+	const shape = new THREE.Shape();
+	shape.moveTo(hole.x, hole.y );
+	shape.arc( 0, 0, hole.radius*1.15, 0, 2 * Math.PI, false);
+
+	var holePath = new THREE.Path();
+	holePath.moveTo(hole.x, hole.y );
+	holePath.arc( 0, 0, hole.radius, 0, 2 * Math.PI, false);
+	shape.holes.push(holePath);
+	
+	
+
+	let geometry = new THREE.ExtrudeGeometry( shape, {
+		depth: 0.01,
+		bevelEnabled:false,
+		steps: 1,
+		curveSegments: segments * 2
+	  });
+	  
+	geometry.translate(-width/2, -height/2, 0)
+	return geometry
+}
+
 function createRectangleWithHoleGeometry(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments=  8) {
 
     var shape = new THREE.Shape();
@@ -229,13 +252,14 @@ function createRectanglesWithHoleGroup(width, height, depth,hole = {x: 0, y: 0, 
 	return group;
 	
 }
-function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture){
+function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture, color){
 	const glassMaterial = new THREE.MeshPhysicalMaterial({
-		transmission: 1,
-		clearcoat: 0.5,
-		sheen: 0.5,
-		roughness: 0,
-		metalness: 0,
+		// transmission: 1,
+		opacity: 0.15,
+		transparent: true,
+		sheen: 1,
+		roughness: 0.2,
+		metalness: 0.5,
 		color: 0xffffff,
 		ior: 1.5,
 		reflectivity: 0.01,
@@ -255,11 +279,20 @@ function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, 
 	// 	// ,envMap: hdrTexture
 	// })
 	console.log(glassMaterial)
+
 	// const geometry = new THREE.BoxGeometry(width, height, depth);
 	const geometry = createRectangleWithHoleGeometry(width, height, depth,hole, segments)
+	let holeMesh = null;
+	if(hole.radius > 0){
+		const holeGeometry = createHoleGeometry(width, height, depth, hole, segments)
+		const material = new THREE.MeshPhysicalMaterial( { color: 0xffffff, metalness: 0.80, roughness:0.60,wireframe:false } );
+		holeMesh = new THREE.Mesh(holeGeometry, material)
+	}
+
+	
 	// const glassMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.5})
 	const mesh = new THREE.Mesh(geometry, glassMaterial);
-	return mesh;
+	return {mesh, holeMesh};
 }
 
 function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled, offsets = [0,0,0,0]) {
@@ -546,7 +579,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 		return { x: glassStart + col * distance_between_walls + cell_size/2,y: glassStart + row * distance_between_walls + cell_size/2, radius: cell_size/2}
 	}
 
-	// maze.end.face = 4;
+	// maze.end.face = 5;
 	// maze.end.position = [0,0]
 	let boxHoleGroup = new THREE.Group()
 	let eps = 0.01 +wall_thickness/2
@@ -585,12 +618,27 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
 			boxHoleGroup.position.z = startZ+ (boxHoleDepth)/2
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture);
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture )
+		const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color);
+		const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color )
+		const glassMeshNeg = neg.mesh;
+		const holeMeshNeg = neg.holeMesh;
+
+		const glassMeshPos = pos.mesh;
+		const holeMeshPos = pos.holeMesh;
+
 		glassMeshPos.position.z = startZ+ half_glass_thickness
 		glassMeshNeg.position.z = -startZ - half_glass_thickness
+		if(holeMeshNeg!=null){
+			holeMeshNeg.position.z = - startZ - half_glass_thickness;
+			group.add(holeMeshNeg)
+		} 
+		if(holeMeshPos!=null){
+			holeMeshPos. position.z = startZ + half_glass_thickness;	
+			group.add(holeMeshPos);
+		} 
 		group.add(glassMeshNeg)
 		group.add(glassMeshPos)
+
 	}
 
 	let startX = -effective_width/2 + wall_thickness/2
@@ -636,10 +684,29 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup.position.x = startX + (boxHoleDepth)/2
 			boxHoleGroup.rotateY(Math.PI/2)
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture)
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture)
+		const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
+		const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
+		
+		const glassMeshNeg = neg.mesh;
+		const holeMeshNeg = neg.holeMesh;
+		const glassMeshPos = pos.mesh;
+		const holeMeshPos = pos.holeMesh;
+
 		glassMeshPos.position.x = startX + half_glass_thickness
 		glassMeshNeg.position.x = -startX  - half_glass_thickness
+		
+		if(holeMeshNeg!=null){
+			holeMeshNeg.position.x = -startX  - half_glass_thickness
+			holeMeshNeg.rotateY(Math.PI/2)
+			group.add(holeMeshNeg)
+		}
+		if(holeMeshPos!=null){
+			holeMeshPos.position.x = startX + half_glass_thickness
+			holeMeshPos.rotateY(Math.PI/2)
+			group.add(holeMeshPos)
+		}
+		
+
 		glassMeshNeg.rotateY(Math.PI/2)
 		glassMeshPos.rotateY(Math.PI/2)
 		group.add(glassMeshNeg)
@@ -685,10 +752,29 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup.position.y = startY + (boxHoleDepth)/2
 			boxHoleGroup.rotateX(Math.PI/2)
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture)
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture)
+		const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
+		const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
+		
+		const glassMeshNeg = neg.mesh;
+		const holeMeshNeg = neg.holeMesh;
+		const glassMeshPos = pos.mesh;
+		const holeMeshPos = pos.holeMesh;
+		
 		glassMeshPos.position.y = startY + half_glass_thickness
 		glassMeshNeg.position.y = -startY  - half_glass_thickness
+		
+		if(holeMeshNeg!=null){
+			holeMeshNeg.position.y = -startY  - half_glass_thickness
+			holeMeshNeg.rotateX(Math.PI/2)
+			group.add(holeMeshNeg)
+		}
+
+		if(holeMeshPos!=null){
+			holeMeshPos.position.y = startY + half_glass_thickness
+			holeMeshPos.rotateX(Math.PI/2)
+			group.add(holeMeshPos)
+		}
+
 		glassMeshNeg.rotateX(Math.PI/2)
 		glassMeshPos.rotateX(Math.PI/2)
 		group.add(glassMeshNeg)

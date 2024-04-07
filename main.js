@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as CANNON from 'cannon';
-import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import { MathUtils } from 'three';
+// import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+// import { MathUtils } from 'three';
 import { createMazeCubeGroup } from './maze_model.js';
 import { generateMaze } from './maze.js';
 import { initializeInputHandler } from './input_handler.js';
-import CannonDebugger from 'cannon-es-debugger';
+// import CannonDebugger from 'cannon-es-debugger';
 import { RGBELoader } from 'three/examples/jsm/Addons.js';
 
 const scene = new THREE.Scene();
@@ -16,125 +16,6 @@ const controls = new OrbitControls( camera, renderer.domElement );
 const hdrTextureURL = new URL('./assets/silver_nebulae.hdr', import.meta.url)
 const loader = new RGBELoader();
 
-
-function loadHDREnvironmentMap() {
-    return new Promise((resolve, reject) => {
-        loader.load(
-            hdrTextureURL,
-            (texture) => {
-                texture.mapping = THREE.EquirectangularReflectionMapping;
-                scene.environment = texture;
-                scene.background = texture;
-                $('#loading-screen').hide()
-                resolve(texture);
-
-            },
-            (xhr) => {
-                const progress = (xhr.loaded / xhr.total) * 100;
-                $('#progress-bar').width(`${progress}%`);
-                
-                // progressBar.style.width = `${progress}%`;
-            },
-            (error) => {
-                reject(error);
-            }
-        );
-    });
-}
-const hdrTexture = await loadHDREnvironmentMap();
-
-controls.mouseButtons = {
-	RIGHT: THREE.MOUSE.ROTATE,
-	MIDDLE: THREE.MOUSE.DOLLY
-	// RIGHT: THREE.MOUSE.PAN
-}
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
-
-// const axesHelper = new THREE.AxesHelper( 10);
-// scene.add( axesHelper );
-
-camera.position.z = 2
-
-// scene.add( new THREE.GridHelper( 10, 10 ) );
-scene.add(new THREE.AmbientLight( 0xffffff, 0.1 ))
-const light1 = new THREE.DirectionalLight( 0xffffff, 1 );
-
-light1.position.y = 5
-
-
-const light2 = new THREE.DirectionalLight( 0xffffff, 1 );
-light2.position.z = 5
-
-const light3 = new THREE.DirectionalLight( 0xffffff, 1);
-light3.position.z = -5
-
-
-const light4 = new THREE.DirectionalLight( 0xffffff, 1);
-light4.position.y = -5
-
-
-const light5 = new THREE.DirectionalLight( 0xffffff, 1);
-light5.position.x = 5
-
-const light6 = new THREE.DirectionalLight( 0xffffff, 1);
-light6.position.x = -5
-
-scene.add(light1)
-scene.add(light2)
-scene.add(light3)
-scene.add(light4)
-scene.add(light5)
-scene.add(light6)
-
-
-// TODO: Function to update camera position
-function updateCamera(maze){
-    console.log(maze.depth / 18 + 1.5)
-    camera.position.z=  maze.depth / 18 + 1.5
-}
-// Function to update lights positions
-function updateLights(maze){
-    light1.position.y = maze.height / 18 + 4.5
-    light2.position.z = maze.depth / 18 + 4.5
-    light3.position.z = -maze.depth / 18 - 4.5
-    light4.position.y = -maze.height / 18 - 4.5
-    light5.position.x = maze.width / 18 + 4.5
-    light6.position.x = -maze.width / 18 - 4.5
-
-
-    if(maze.colorful){
-        light1.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-        light2.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-        light3.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-        light4.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-        light5.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-        light6.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
-    }else{
-        light1.color.set(1,1,1)
-        light2.color.set(1,1,1)
-        light3.color.set(1,1,1)
-        light4.color.set(1,1,1)
-        light5.color.set(1,1,1)
-        light6.color.set(1,1,1)
-    }
-    console.log(light1.position)
-}
-
-
-// Function to adjust camera automaticall
-
-// let geoms=[]
-// let meshes=[]
-// clone.updateMatrixWorld(true,true)
-// clone.traverse(e=>e.isMesh && meshes.push(e) && (geoms.push(( e.geometry.index ) ? e.geometry.toNonIndexed() : e.geometry().clone())))
-// geoms.forEach((g,i)=>g.applyMatrix4(meshes[i].matrixWorld));
-// let gg = BufferGeometryUtils.mergeBufferGeometries(geoms,true)
-// gg.applyMatrix4(clone.matrix.clone().invert());
-// gg.userData.materials = meshes.map(m=>m.material)
-/// controls.panSpeed = 5
-
-// Constants
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
 const GRAVITY_ACCELERATION = 10 // in cells
@@ -165,6 +46,92 @@ var nebulae = []
 //TEST
 
 // scene.add(testMesh);
+
+
+let isMouseDown = false;
+let isShiftPressed = false;
+let currX, currY;
+let prevX, prevY; 
+
+const world = new CANNON.World();
+
+controls.mouseButtons = {
+	RIGHT: THREE.MOUSE.ROTATE,
+	MIDDLE: THREE.MOUSE.DOLLY
+	// RIGHT: THREE.MOUSE.PAN
+}
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+// const axesHelper = new THREE.AxesHelper( 10);
+// scene.add( axesHelper );
+
+camera.position.z = 2
+
+// scene.add( new THREE.GridHelper( 10, 10 ) );
+scene.add(new THREE.AmbientLight( 0xffffff, 0 ))
+const light1 = new THREE.DirectionalLight( 0xffffff, 1 );
+
+light1.position.y = 5
+
+
+const light2 = new THREE.DirectionalLight( 0xffffff, 1 );
+light2.position.z = 5
+
+const light3 = new THREE.DirectionalLight( 0xffffff, 1);
+light3.position.z = -5
+
+
+const light4 = new THREE.DirectionalLight( 0xffffff, 1);
+light4.position.y = -5
+
+
+const light5 = new THREE.DirectionalLight( 0xffffff, 1);
+light5.position.x = 5
+
+const light6 = new THREE.DirectionalLight( 0xffffff, 1);
+light6.position.x = -5
+
+let ballLight = null;   
+scene.add(light1)
+scene.add(light2)
+scene.add(light3)
+scene.add(light4)
+scene.add(light5)
+scene.add(light6)
+
+function updateCamera(maze){
+    console.log(maze.depth / 18 + 1.5)
+    camera.position.x = 0;
+    camera.position.y = 0;
+    camera.position.z=  maze.depth / 18 + 1.5
+}
+function updateLights(maze){
+    light1.position.y = maze.height / 18 + 4.5
+    light2.position.z = maze.depth / 18 + 4.5
+    light3.position.z = -maze.depth / 18 - 4.5
+    light4.position.y = -maze.height / 18 - 4.5
+    light5.position.x = maze.width / 18 + 4.5
+    light6.position.x = -maze.width / 18 - 4.5
+
+
+    if(maze.colorful){
+        light1.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light2.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light3.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light4.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light5.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light6.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+    }else{
+        light1.color.set(1,1,1)
+        light2.color.set(1,1,1)
+        light3.color.set(1,1,1)
+        light4.color.set(1,1,1)
+        light5.color.set(1,1,1)
+        light6.color.set(1,1,1)
+    }
+    console.log(light1.position)
+}
 class Maze{
 	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
 		this.width = width
@@ -196,7 +163,7 @@ class Maze{
         // renderBackground(scene)
         updateCamera(this)
         updateLights(this)
-		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze, hdrTexture);
+		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze, null);
 
         this.walls = mazeData.walls;
         this.model = mazeData.group;
@@ -216,22 +183,65 @@ class Maze{
 	}
 }
 
-let isMouseDown = false;
-let isShiftPressed = false;
-let currX, currY;
-let prevX, prevY; 
+function loadHDREnvironmentMap() {
+    return new Promise((resolve, reject) => {
+        loader.load(
+            hdrTextureURL,
+            (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                scene.environment = texture;
+                scene.background = texture;
+                $('#loading-screen').hide()
+                resolve(texture);
 
-// Textures
+            },
+            (xhr) => {
+                const progress = (xhr.loaded / xhr.total) * 100;
+                $('#progress-bar').width(`${progress}%`);
+                
+                // progressBar.style.width = `${progress}%`;
+            },
+            (error) => {
+                reject(error);
+            }
+        );
+    });
+}
+
 const moonTexture = new THREE.TextureLoader().load('./assets/moon.jpg')
+const maze = new Maze()
+const hdrTexture = await loadHDREnvironmentMap();
+$('#loading-screen').hide()
 
-// Initialize Physics world
-const world = new CANNON.World();
+
+
+
+// TODO: Function to update camera position
+
+// Function to update lights positions
+
+
+
+// Function to adjust camera automaticall
+
+// let geoms=[]
+// let meshes=[]
+// clone.updateMatrixWorld(true,true)
+// clone.traverse(e=>e.isMesh && meshes.push(e) && (geoms.push(( e.geometry.index ) ? e.geometry.toNonIndexed() : e.geometry().clone())))
+// geoms.forEach((g,i)=>g.applyMatrix4(meshes[i].matrixWorld));
+// let gg = BufferGeometryUtils.mergeBufferGeometries(geoms,true)
+// gg.applyMatrix4(clone.matrix.clone().invert());
+// gg.userData.materials = meshes.map(m=>m.material)
+/// controls.panSpeed = 5
+
+// Constants
+
 
 world.gravity = new CANNON.Vec3(0, 0, 0)
 world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
-const maze = new Maze()
+
 
 // {
 //     //TEST
@@ -277,7 +287,7 @@ function loadNebula(){
                 color: color
             })
             addNebula(nebulaGeometry, nebulaMaterial, 0, posY, 0)
-            posY+=20
+            posY+=30
             // Nebula top
             // let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
             // nebula.position.set(0, posY, 0)
@@ -338,7 +348,7 @@ console.log(nebulae)
 function addStars(numStars, maze){
     scene.remove(starsMesh)
     const loader = new THREE.TextureLoader()
-    const starsTexture = loader.load('./assets/shrek.jpg')
+    // const starsTexture = loader.load('./assets/shrek.jpg')
 
     const starsMaterial = new THREE.PointsMaterial({
         size: STARS_SIZE,
@@ -466,15 +476,19 @@ function createBall(maze){
     // Removes mesh and body when they are existing
     if(ballMesh){
         scene.remove(ballMesh)
+        scene.remove(ballLight)
     }
+
+    ballLight = new THREE.PointLight(0xe7e0db, maze.cell_size/10, maze.cell_size);
+    scene.add(ballLight)
     if(ballBody){
         world.remove(ballBody)
     }
     BALL_RADIUS = (maze.cell_size - maze.wall_thickness)*0.69/2
     // Create new ball mesh
     const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
-    const ballMat = new THREE.MeshBasicMaterial({
-        map: moonTexture,
+    const ballMat = new THREE.MeshStandardMaterial({
+        map: moonTexture, emissive: 0xe7e0db, emissiveIntensity: 0.5
     }); 
     ballMesh = new THREE.Mesh(ballGeometry, ballMat)
 
@@ -577,7 +591,12 @@ function rotateCube(){
     if(isMouseDown){
         const deltaX = (currX - prevX) *SENSITIVITY;
         const deltaY = (currY - prevY) * SENSITIVITY;
-
+        
+        if(Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3){
+            prevX = currX;
+            prevY = currY;
+            return;
+        }
         var cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
 
@@ -668,15 +687,6 @@ document.addEventListener('mousemove', (event)=>{
 document.addEventListener('keydown', function(event){
     if(event.shiftKey)isShiftPressed = true;
     //listen for wasd key
-    if(event.key === 'w'){
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -1000), new CANNON.Vec3(0, 0, 0))
-    }else if(event.key === 'a'){
-        ballBody.applyLocalForce(new CANNON.Vec3(-1000, 0, 0), new CANNON.Vec3(0, 0, 0))
-    }else if(event.key === 'd'){
-        ballBody.applyLocalForce(new CANNON.Vec3(1000, 0, ), new CANNON.Vec3(0, 0, 0))
-    }else if(event.key === 's'){
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, 1000), new CANNON.Vec3(0, 0, 0))
-    }
 
 });
 
@@ -692,6 +702,7 @@ function updateMazeMesh(){
 function updateBallMesh(){
     ballMesh.position.copy(ballBody.position);
     ballMesh.quaternion.copy(ballBody.quaternion); 
+    ballLight.position.copy(ballBody.position)
 }
 
 
