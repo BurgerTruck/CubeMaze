@@ -232,6 +232,8 @@ function createRectanglesWithHoleGroup(width, height, depth,hole = {x: 0, y: 0, 
 function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture){
 	const glassMaterial = new THREE.MeshPhysicalMaterial({
 		transmission: 1,
+		clearcoat: 0.5,
+		sheen: 0.5,
 		roughness: 0,
 		metalness: 0,
 		ior: 1.5,
@@ -239,7 +241,7 @@ function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, 
 		specularIntensity: 0.1,
 		refractionRatio: 0.98,
 		thickness: depth
-		,envMap: hdrTexture
+		// ,envMap: hdrTexture
 	  })
 	console.log(glassMaterial)
 	// const geometry = new THREE.BoxGeometry(width, height, depth);
