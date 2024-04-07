@@ -346,9 +346,9 @@ function createCubeBody(maze){
     }
     
     // Create the glass mesh
-    const glassCubeWidth = maze.width * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
-    const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
-    const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size * maze.wall_thickness;
+    const glassCubeWidth = maze.width * maze.cell_size + 190 * maze.cell_size;
+    const glassCubeHeight = maze.height * maze.cell_size + 190 * maze.cell_size;
+    const glassCubeDepth = maze.depth * maze.cell_size + 190 * maze.cell_size;
 
 
     // Define positions and orientations of the glass planes
