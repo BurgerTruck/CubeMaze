@@ -9,17 +9,16 @@ import { initializeInputHandler } from './input_handler.js';
 import CannonDebugger from 'cannon-es-debugger';
 import { RGBELoader } from 'three/examples/jsm/Addons.js';
 
-
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
 const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
 const controls = new OrbitControls( camera, renderer.domElement );
 const hdrTextureURL = new URL('./assets/silver_nebulae.hdr', import.meta.url)
 const loader = new RGBELoader();
-loader.load(hdrTextureURL, function(texture){
-    texture.mapping = THREE.EquirectangularReflectionMapping
-    scene.background = texture;
-})
+// loader.load(hdrTextureURL, function(texture){
+//     texture.mapping = THREE.EquirectangularReflectionMapping
+//     scene.background = texture;
+// })
 
 
 controls.mouseButtons = {
@@ -114,14 +113,16 @@ const END = 'END'
 const STARS_SIZE = 0.001
 const PARTICLE_COUNT = 10000
 const STARS_VELOCITY = 0.0001
+const NEBULAE_COUNT = 10
 
 
 var ballMesh;
 var ballBody;
 var glassBody;
 var starsMesh
-var starGeo = new THREE.BufferGeometry();;
+var starGeo = new THREE.BufferGeometry();
 var stars
+var nebulae = []
 //TEST
 
 // scene.add(testMesh);
@@ -171,6 +172,7 @@ class Maze{
         createCubeBody(this)
 
         stars = addStars(PARTICLE_COUNT, this)
+        loadNebula()
 	}
 }
 
@@ -190,7 +192,6 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-renderBackground(scene)
 // {
 //     //TEST
 //     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
@@ -206,20 +207,57 @@ renderBackground(scene)
 
 initializeInputHandler(maze, scene)
 
-function renderBackground(scene){
-    // List of possible background file names
-    const backgrounds = ['space1.jpg', 'space2.jpg', 'space3.jpg'];
-
-    const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+function loadNebula(){
+    // scene.fog = new THREE.FogExp2(0x03544e, 0.001);
+    // renderer.setClearColor(scene.fog.color)
 
     const textureLoader = new THREE.TextureLoader();
-    const spaceTexture = textureLoader.load(`assets/${randomBackground}`);
+    textureLoader.load('./assets/smoke2.png', function(texture){
+        let nebulaGeometry = new THREE.PlaneGeometry(500, 500);
+        let nebulaMaterial = new THREE.MeshLambertMaterial({
+            map: texture,
+            transparent: true
+        })
 
-    scene.background = spaceTexture
+        for(let i = 0; i < NEBULAE_COUNT; i++){
+            let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+            // TODO: Might need adjustments
+            nebula.position.set(Math.random(), Math.random()*5000, -Math.random() * 500)
+            nebula.rotation.x = 1.16
+            nebula.rotation.y = -0.12
+            nebula.rotation.z = Math.random() * 2 * Math.PI
+            nebula.material.opacity = 0.55
+            nebulae.push(nebula)
+            scene.add(nebula)
+        }
+    })
+
+    // LIGHTS FOR NEBULA
+
+    // let directionalLight = new THREE.DirectionalLight(0xff8c19);
+    // directionalLight.position.set(0,0,1);
+    // scene.add(directionalLight);
+
+    let orangeLight = new THREE.PointLight(0xcc6600,50,450,1.7);
+    orangeLight.position.set(200,300,100);
+    scene.add(orangeLight);
+
+    let redLight = new THREE.PointLight(0xd8547e,50,450,1.7);
+    redLight.position.set(100,300,100);
+    scene.add(redLight);
+
+    let blueLight = new THREE.PointLight(0x3677ac,50,450,1.7);
+    blueLight.position.set(300,300,200);
+    scene.add(blueLight);
 
 }
 
-
+function renderNebula(){
+    nebulae.forEach(n=>{
+        n.rotation.z -= 0.001
+    })
+}
+console.log(nebulae)
 
 
 
@@ -591,6 +629,7 @@ function updateBallMesh(){
 
 function animate() {
 	requestAnimationFrame( animate );
+    requestAnimationFrame(renderNebula)
     update();    
     updateBallMesh()
 
