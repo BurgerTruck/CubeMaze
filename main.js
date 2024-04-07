@@ -35,28 +35,28 @@ document.body.appendChild( renderer.domElement );
 
 camera.position.z = 2
 
-// scene.add( new THREE.GridHelper( 10, 10 ) );
-scene.add(new THREE.AmbientLight( 0xffffff, 0.6 ))
-const light1 = new THREE.PointLight( 0xffffff, 10, 100 );
+scene.add( new THREE.GridHelper( 10, 10 ) );
+scene.add(new THREE.AmbientLight( 0xffffff, 0.1 ))
+const light1 = new THREE.DirectionalLight( 0xffffff, 1 );
 
 light1.position.y = 5
 
 
-const light2 = new THREE.PointLight( 0xffffff, 10, 100 );
+const light2 = new THREE.DirectionalLight( 0xffffff, 1 );
 light2.position.z = 5
 
-const light3 = new THREE.PointLight( 0xffffff, 10, 100 );
+const light3 = new THREE.DirectionalLight( 0xffffff, 1);
 light3.position.z = -5
 
 
-const light4 = new THREE.PointLight( 0xffffff, 10, 100 );
+const light4 = new THREE.DirectionalLight( 0xffffff, 1);
 light4.position.y = -5
 
 
-const light5 = new THREE.PointLight( 0xffffff, 10, 100 );
+const light5 = new THREE.DirectionalLight( 0xffffff, 1);
 light5.position.x = 5
 
-const light6 = new THREE.PointLight( 0xffffff, 10, 100 );
+const light6 = new THREE.DirectionalLight( 0xffffff, 1);
 light6.position.x = -5
 
 scene.add(light1)
@@ -190,7 +190,7 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-// renderBackground(scene)
+renderBackground(scene)
 // {
 //     //TEST
 //     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
