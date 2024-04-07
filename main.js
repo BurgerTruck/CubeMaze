@@ -231,8 +231,15 @@ const maze = new Maze()
 initializeInputHandler(maze, scene)
 
 // Adds 1 nebula
-function addNebula(){
-
+function addNebula(nebulaGeometry, nebulaMaterial, posX, posY, posZ){
+    let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+    nebula.position.set(posX, posY, posZ)
+    nebula.material.opacity = 0.75
+    nebula.rotation.x =1.15
+    nebula.rotation.y = -0.12
+    nebula.rotation.z = Math.random() * 2 * Math.PI
+    nebulae.push(nebula)
+    scene.add(nebula)
 }
 
 // Adds all nebula
@@ -251,17 +258,18 @@ function loadNebula(){
                 transparent: true,
                 color: color
             })
-
-            // Nebula top
-            let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
-            nebula.position.set(0, posY, 0)
+            addNebula(nebulaGeometry, nebulaMaterial, 0, posY, 0)
             posY+=20
-            nebula.material.opacity = 0.75
-            nebula.rotation.x =1.15
-            nebula.rotation.y = -0.12
-            nebula.rotation.z = Math.random() * 2 * Math.PI
-            nebulae.push(nebula)
-            scene.add(nebula)
+            // Nebula top
+            // let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+            // nebula.position.set(0, posY, 0)
+            // posY+=20
+            // nebula.material.opacity = 0.75
+            // nebula.rotation.x =1.15
+            // nebula.rotation.y = -0.12
+            // nebula.rotation.z = Math.random() * 2 * Math.PI
+            // nebulae.push(nebula)
+            // scene.add(nebula)
         })
 
 
@@ -299,10 +307,10 @@ function loadNebula(){
 function renderNebula(){
     nebulae.forEach(n=>{
         n.rotation.z -= 0.0002
-        if(n.position.z > 50)
-            n.position.z += 0.0001
-        else
-            n.position.z -= 0.0001
+        // if(n.position.z > 50)
+        //     n.position.z += 0.0001
+        // else
+        //     n.position.z -= 0.0001
     })
 }
 console.log(nebulae)
