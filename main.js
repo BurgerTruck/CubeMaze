@@ -190,7 +190,7 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-renderBackground(scene)
+// renderBackground(scene)
 // {
 //     //TEST
 //     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
@@ -586,8 +586,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-// const cannonDebugger = new CannonDebugger(scene, world, {
-// })
+const cannonDebugger = new CannonDebugger(scene, world, {
+})
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -597,7 +597,7 @@ function animate() {
     updateMazeMesh();
     animateStars(stars, STARS_VELOCITY)
 	renderer.render( scene, camera );
-    // cannonDebugger.update()
+    cannonDebugger.update()
 	// controls.update()
     
     

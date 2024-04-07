@@ -237,7 +237,8 @@ function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, 
 		metalness: 0,
 		ior: 1.5,
 		reflectivity: 0.1,
-		refractionRatio: 0.98
+		refractionRatio: 0.98,
+		thickness: depth
 	  })
 	console.log(glassMaterial)
 	// const geometry = new THREE.BoxGeometry(width, height, depth);
@@ -524,17 +525,17 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	const glass_thickness = wall_thickness;
 	const size_offset = glass_thickness*2
 	const half_glass_thickness = glass_thickness/2
-	let glassStart = glass_thickness + wall_height
+	let glassStart = wall_height + wall_thickness*2 
 	
 
 	function getHole(row, col){
 		return { x: glassStart + col * distance_between_walls + cell_size/2,y: glassStart + row * distance_between_walls + cell_size/2, radius: cell_size/2}
 	}
 
-	// maze.end.face = 45;
-	// maze.end.position = [0,8]
+	// maze.end.face = 4;
+	// maze.end.position = [0,0]
 	let boxHoleGroup = new THREE.Group()
-	let eps = 0.01
+	let eps = 0.01 +wall_thickness/2
 	{
 		const mesh_width = total_width + wall_height*2 + glass_thickness
 		const mesh_height = total_height + wall_height*2 +  glass_thickness
