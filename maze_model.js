@@ -232,15 +232,28 @@ function createRectanglesWithHoleGroup(width, height, depth,hole = {x: 0, y: 0, 
 function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture){
 	const glassMaterial = new THREE.MeshPhysicalMaterial({
 		transmission: 1,
+		opacity: 0.5,
+		transparent: true,
 		roughness: 0,
 		metalness: 0,
+		color: 0xffffff,
 		ior: 1.5,
-		reflectivity: 1,
-		specularIntensity: 0.1,
-		refractionRatio: 0.98,
+		reflectivity: 0.01,
+		specularIntensity: 0.01,
+		refractionRatio: 0.95,
 		thickness: depth
-		,envMap: hdrTexture
+		// ,envMap: hdrTexture
 	  })
+	// const glassMaterial = new MeshTransmissionMaterial({
+	// 	roughness: 0,
+	// 	metalness: 0,
+	// 	color: 0xffffff,
+	// 	ior: 1.5,
+	// 	reflectivity: 1,
+	// 	specularIntensity: 0.01,
+	// 	thickness: depth
+	// 	// ,envMap: hdrTexture
+	// })
 	console.log(glassMaterial)
 	// const geometry = new THREE.BoxGeometry(width, height, depth);
 	const geometry = createRectangleWithHoleGeometry(width, height, depth,hole, segments)
@@ -460,7 +473,7 @@ function createWallMesh(width, height, depth, wall_height,wallThickness, radius,
 	const geometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled,offsets )
 	// const collisionGeometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, true)
 	const boxes = getWallBoxes(width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, boxOffsets)
-	const material = new THREE.MeshPhysicalMaterial( { color: color, side: THREE.DoubleSide, metalness: 0.42, roughness:0.60,wireframe:false } );
+	const material = new THREE.MeshPhysicalMaterial( { color: color, metalness: 0.42, roughness:0.60,wireframe:false } );
 
 	const mesh = new THREE.Mesh( geometry, material ) ;
 	return {mesh: mesh, boxes: boxes}
