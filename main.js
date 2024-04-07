@@ -101,6 +101,23 @@ function updateLights(maze){
     light4.position.y = -maze.height / 18 - 4.5
     light5.position.x = maze.width / 18 + 4.5
     light6.position.x = -maze.width / 18 - 4.5
+
+
+    if(maze.colorful){
+        light1.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light2.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light3.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light4.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light5.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+        light6.color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+    }else{
+        light1.color.set(1,1,1)
+        light2.color.set(1,1,1)
+        light3.color.set(1,1,1)
+        light4.color.set(1,1,1)
+        light5.color.set(1,1,1)
+        light6.color.set(1,1,1)
+    }
     console.log(light1.position)
 }
 
@@ -159,6 +176,7 @@ class Maze{
 		this.wall_height = cell_size
 		this.bevelEnabled = bevelEnabled
 		this.color = color
+        this.colorful = false;
         this.updateMaze();
         // console.log(this.start_cell.position)
 		console.log("START: "+ this.start_cell.face +"," + this.start_cell.position)
@@ -600,8 +618,9 @@ function rotateCube(){
 }
 
 function update(){
-    rotateCube()
     ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE, 0), ballBody.position)
+    rotateCube()
+
     let speed = ballBody.velocity.norm()
     if(speed> MAX_SPEED){
         ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
@@ -682,7 +701,7 @@ function updateBallMesh(){
 
 function animate() {
 	requestAnimationFrame( animate );
-    renderNebula()
+    renderNebula();
     update();    
     updateBallMesh()
 

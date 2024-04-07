@@ -69,5 +69,8 @@ export function initializeInputHandler(maze, scene) {
                 maze.updateModel(scene)
             }
         });
+        $('#colorful').on('change', function() {
+            maze.colorful = $('#colorful').prop('checked');
+        });
     });
 }
