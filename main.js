@@ -29,10 +29,10 @@ camera.position.z = 2
 
 scene.add( new THREE.GridHelper( 10, 10 ) );
 scene.add(new THREE.AmbientLight( 0xffffff, 0.6 ))
-const light = new THREE.PointLight( 0xffffff, 10, 100 );
+const light1 = new THREE.PointLight( 0xffffff, 10, 100 );
 
-light.position.y = 5
-scene.add(light)
+light1.position.y = 5
+
 
 const light2 = new THREE.PointLight( 0xffffff, 10, 100 );
 light2.position.z = 5
@@ -51,12 +51,32 @@ light5.position.x = 5
 const light6 = new THREE.PointLight( 0xffffff, 10, 100 );
 light6.position.x = -5
 
+scene.add(light1)
 scene.add(light2)
 scene.add(light3)
 scene.add(light4)
 scene.add(light5)
 scene.add(light6)
 
+
+// TODO: Function to update camera position
+function updateCamera(maze){
+    console.log(maze.depth / 18 + 1.5)
+    camera.position.z=  maze.depth / 18 + 1.5
+}
+// Function to update lights positions
+function updateLights(maze){
+    light1.position.y = maze.height / 18 + 4.5
+    light2.position.z = maze.depth / 18 + 4.5
+    light3.position.z = -maze.depth / 18 - 4.5
+    light4.position.y = -maze.height / 18 - 4.5
+    light5.position.x = maze.width / 18 + 4.5
+    light6.position.x = -maze.width / 18 - 4.5
+    console.log(light1.position)
+}
+
+
+// Function to adjust camera automaticall
 
 // let geoms=[]
 // let meshes=[]
@@ -72,20 +92,6 @@ var ballMesh;
 var ballBody;
 var glassBody;
 
-function extractVerticesAndIndices(geometry) {
-    const position = geometry.attributes.position.array
-    const vertices = [];
-    const indices = [];
-    
-    for (let i = 0; i < position.length; i+=3) {
-        const x = position[i];
-        const y = position[i+1];
-        const z = position[i+2];
-        vertices.push(new CANNON.Vec3(x, y, z));
-    }
-    
-    return { vertices: vertices, indices: geometry.index.array };
-}
 //TEST
 
 // scene.add(testMesh);
@@ -116,7 +122,9 @@ class Maze{
 
 	updateModel(scene){
 		scene.remove(this.model)
-        renderBackground(scene)
+        // renderBackground(scene)
+        updateCamera(this)
+        updateLights(this)
 		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
 
         this.walls = mazeData.walls;
@@ -135,6 +143,9 @@ class Maze{
         addStars(200)
 	}
 }
+
+
+
 // Constants
 
 const BALL_MASS = 1000
@@ -168,7 +179,7 @@ world.allowSleep = false; // improve performance
 world.defaultContactMaterial.friction = 1; 
 
 const maze = new Maze()
-renderBackground(scene)
+// renderBackground(scene)
 // {
 //     //TEST
 //     const testGeometry = createRectangleWithHole(2,2,2,0.1, 0.5, 0.5);
@@ -268,7 +279,7 @@ function getPosition(maze, type){
             break;
 
         case 5: // TOP
-            z = (row - Math.floor(maze.depth / 2)) * maze.cell_size 
+            z = ((maze.depth - row -1) - Math.floor(maze.depth / 2)) * maze.cell_size 
             x = (col - Math.floor(maze.width / 2)) * maze.cell_size
             y =  (maze.cell_size * maze.height / 2 * 1.1)
             break;
