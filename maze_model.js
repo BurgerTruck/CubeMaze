@@ -229,16 +229,17 @@ function createRectanglesWithHoleGroup(width, height, depth,hole = {x: 0, y: 0, 
 	return group;
 	
 }
-function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8){
+function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture){
 	const glassMaterial = new THREE.MeshPhysicalMaterial({
 		transmission: 1,
-		opacity:1,
 		roughness: 0,
 		metalness: 0,
 		ior: 1.5,
-		reflectivity: 0.1,
+		reflectivity: 1,
+		specularIntensity: 0.1,
 		refractionRatio: 0.98,
 		thickness: depth
+		,envMap: hdrTexture
 	  })
 	console.log(glassMaterial)
 	// const geometry = new THREE.BoxGeometry(width, height, depth);
@@ -465,7 +466,7 @@ function createWallMesh(width, height, depth, wall_height,wallThickness, radius,
 	return {mesh: mesh, boxes: boxes}
 }
 
-function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_height = 0.1, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = false, color = 0xffffff, maze) {
+function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_height = 0.1, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = false, color = 0xffffff, maze, hdrTexture) {
 	const effective_depth = depth * cell_size
 	const effective_width = width  * cell_size
 	const effective_height = height * cell_size
@@ -571,8 +572,8 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
 			boxHoleGroup.position.z = startZ+ (boxHoleDepth)/2
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg);
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture);
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture )
 		glassMeshPos.position.z = startZ+ half_glass_thickness
 		glassMeshNeg.position.z = -startZ - half_glass_thickness
 		group.add(glassMeshNeg)
@@ -622,8 +623,8 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup.position.x = startX + (boxHoleDepth)/2
 			boxHoleGroup.rotateY(Math.PI/2)
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg)
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture)
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture)
 		glassMeshPos.position.x = startX + half_glass_thickness
 		glassMeshNeg.position.x = -startX  - half_glass_thickness
 		glassMeshNeg.rotateY(Math.PI/2)
@@ -671,8 +672,8 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			boxHoleGroup.position.y = startY + (boxHoleDepth)/2
 			boxHoleGroup.rotateX(Math.PI/2)
 		}
-		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg)
-		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos)
+		const glassMeshNeg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture)
+		const glassMeshPos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture)
 		glassMeshPos.position.y = startY + half_glass_thickness
 		glassMeshNeg.position.y = -startY  - half_glass_thickness
 		glassMeshNeg.rotateX(Math.PI/2)
