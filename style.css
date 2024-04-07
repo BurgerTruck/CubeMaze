@@ -36,3 +36,40 @@ canvas {
     left: 20px; 
 
 }
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 1); /* Semi-transparent black */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Make sure it's on top */
+}
+
+#loading-bar {
+    width: 60%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    position: relative;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: #4caf50;
+    position: relative;
+    top: 0;
+    left: 0;
+}
+
+#loading-text {
+    position:relative;
+    color: #fff;
+    font-size: 24px;
+    margin-top: 20px;
+}

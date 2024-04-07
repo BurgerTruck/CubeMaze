@@ -15,11 +15,33 @@ const renderer = new THREE.WebGLRenderer({precision: "highp", antialias: true});
 const controls = new OrbitControls( camera, renderer.domElement );
 const hdrTextureURL = new URL('./assets/silver_nebulae.hdr', import.meta.url)
 const loader = new RGBELoader();
-// loader.load(hdrTextureURL, function(texture){
-//     texture.mapping = THREE.EquirectangularReflectionMapping
-//     scene.background = texture;
-// })
 
+
+function loadHDREnvironmentMap() {
+    return new Promise((resolve, reject) => {
+        loader.load(
+            hdrTextureURL,
+            (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                scene.environment = texture;
+                scene.background = texture;
+                $('#loading-screen').hide()
+                resolve(texture);
+
+            },
+            (xhr) => {
+                const progress = (xhr.loaded / xhr.total) * 100;
+                $('#progress-bar').width(`${progress}%`);
+                
+                // progressBar.style.width = `${progress}%`;
+            },
+            (error) => {
+                reject(error);
+            }
+        );
+    });
+}
+const hdrTexture = await loadHDREnvironmentMap();
 
 controls.mouseButtons = {
 	RIGHT: THREE.MOUSE.ROTATE,
@@ -156,7 +178,7 @@ class Maze{
         // renderBackground(scene)
         updateCamera(this)
         updateLights(this)
-		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze);
+		const mazeData = createMazeCubeGroup(this.width, this.height, this.depth, this.radiusPercent, this.wall_height, this.wall_thickness, this.cell_size, this.bevelEnabled, this.color, this.maze, hdrTexture);
 
         this.walls = mazeData.walls;
         this.model = mazeData.group;
