@@ -56,7 +56,7 @@ document.body.appendChild( renderer.domElement );
 
 camera.position.z = 2
 
-scene.add( new THREE.GridHelper( 10, 10 ) );
+// scene.add( new THREE.GridHelper( 10, 10 ) );
 scene.add(new THREE.AmbientLight( 0xffffff, 0.1 ))
 const light1 = new THREE.DirectionalLight( 0xffffff, 1 );
 
@@ -152,7 +152,7 @@ const END = 'END'
 const STARS_SIZE = 0.001
 const PARTICLE_COUNT = 10000
 const STARS_VELOCITY = 0.0001
-const NEBULAE_COUNT = 10
+const NEBULAE_COUNT = 1
 
 
 var ballMesh;
@@ -248,54 +248,87 @@ const maze = new Maze()
 
 initializeInputHandler(maze, scene)
 
+// Adds 1 nebula
+function addNebula(nebulaGeometry, nebulaMaterial, posX, posY, posZ){
+    let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+    nebula.position.set(posX, posY, posZ)
+    nebula.material.opacity = 0.75
+    nebula.rotation.x =1.15
+    nebula.rotation.y = -0.12
+    nebula.rotation.z = Math.random() * 2 * Math.PI
+    nebulae.push(nebula)
+    scene.add(nebula)
+}
+
+// Adds all nebula
 function loadNebula(){
     // scene.fog = new THREE.FogExp2(0x03544e, 0.001);
     // renderer.setClearColor(scene.fog.color)
 
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('./assets/smoke2.png', function(texture){
-        let nebulaGeometry = new THREE.PlaneGeometry(500, 500);
-        let nebulaMaterial = new THREE.MeshLambertMaterial({
-            map: texture,
-            transparent: true
+    const colors = [0xd8547e, 0xD22B2B, 0x3677ac];
+    var posY = 50
+    textureLoader.load('./assets/smoke3.png', function(texture){
+        let nebulaGeometry = new THREE.PlaneGeometry(400, 400);
+        colors.forEach(color =>{
+            let nebulaMaterial = new THREE.MeshLambertMaterial({
+                map: texture,
+                transparent: true,
+                color: color
+            })
+            addNebula(nebulaGeometry, nebulaMaterial, 0, posY, 0)
+            posY+=20
+            // Nebula top
+            // let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+            // nebula.position.set(0, posY, 0)
+            // posY+=20
+            // nebula.material.opacity = 0.75
+            // nebula.rotation.x =1.15
+            // nebula.rotation.y = -0.12
+            // nebula.rotation.z = Math.random() * 2 * Math.PI
+            // nebulae.push(nebula)
+            // scene.add(nebula)
         })
 
-        for(let i = 0; i < NEBULAE_COUNT; i++){
-            let nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
-            // TODO: Might need adjustments
-            nebula.position.set(Math.random(), Math.random()*5000, -Math.random() * 500)
-            nebula.rotation.x = 1.16
-            nebula.rotation.y = -0.12
-            nebula.rotation.z = Math.random() * 2 * Math.PI
-            nebula.material.opacity = 0.55
-            nebulae.push(nebula)
-            scene.add(nebula)
-        }
+
+        // // Nebula Bottom
+        // nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+        // nebula.position.set(0, -10, 0)
+        // nebula.material.opacity = 0.55
+        // nebulae.push(nebula)
+        // scene.add(nebula)
+
+        // // Nebula Top Left
+        // nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+        // nebula.position.set(-10, 10, 0)
+        // nebula.material.opacity = 0.55
+        // nebulae.push(nebula)
+        // scene.add(nebula)
+
+        // // Nebula Top Right
+        // nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+        // nebula.position.set(10, 10, 0)
+        // nebula.material.opacity = 0.55
+        // nebulae.push(nebula)
+        // scene.add(nebula)
+
+        // // Neula Behind
+        // nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+        // nebula.position.set(0, 10, -10)
+        // nebula.material.opacity = 0.55
+        // nebulae.push(nebula)
+        // scene.add(nebula)
     })
-
-    // LIGHTS FOR NEBULA
-
-    // let directionalLight = new THREE.DirectionalLight(0xff8c19);
-    // directionalLight.position.set(0,0,1);
-    // scene.add(directionalLight);
-
-    let orangeLight = new THREE.PointLight(0xcc6600,50,450,1.7);
-    orangeLight.position.set(200,300,100);
-    scene.add(orangeLight);
-
-    let redLight = new THREE.PointLight(0xd8547e,50,450,1.7);
-    redLight.position.set(100,300,100);
-    scene.add(redLight);
-
-    let blueLight = new THREE.PointLight(0x3677ac,50,450,1.7);
-    blueLight.position.set(300,300,200);
-    scene.add(blueLight);
-
 }
+
 
 function renderNebula(){
     nebulae.forEach(n=>{
-        n.rotation.z -= 0.001
+        n.rotation.z -= 0.0002
+        // if(n.position.z > 50)
+        //     n.position.z += 0.0001
+        // else
+        //     n.position.z -= 0.0001
     })
 }
 console.log(nebulae)
@@ -307,8 +340,6 @@ function addStars(numStars, maze){
     const loader = new THREE.TextureLoader()
     const starsTexture = loader.load('./assets/shrek.jpg')
 
-    const colors = [0xffffff, 0x0000ff, 0xff0000, 0xffff00];
-
     const starsMaterial = new THREE.PointsMaterial({
         size: STARS_SIZE,
         transparent: false,
@@ -317,7 +348,6 @@ function addStars(numStars, maze){
     const starsGeometry = new THREE.BufferGeometry;
     
     const posArray = new Float32Array(PARTICLE_COUNT * 3)
-    const colorArray = [];
     var threshold
     for (let i = 0; i < numStars * 3; i ++) {
         // X - width

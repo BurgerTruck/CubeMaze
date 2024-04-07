@@ -232,8 +232,8 @@ function createRectanglesWithHoleGroup(width, height, depth,hole = {x: 0, y: 0, 
 function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, segments = 8, hdrTexture){
 	const glassMaterial = new THREE.MeshPhysicalMaterial({
 		transmission: 1,
-		opacity: 0.5,
-		transparent: true,
+		clearcoat: 0.5,
+		sheen: 0.5,
 		roughness: 0,
 		metalness: 0,
 		color: 0xffffff,
