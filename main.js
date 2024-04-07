@@ -27,7 +27,7 @@ scene.add( axesHelper );
 
 camera.position.z = 2
 
-scene.add( new THREE.GridHelper( 10, 10 ) );
+// scene.add( new THREE.GridHelper( 10, 10 ) );
 scene.add(new THREE.AmbientLight( 0xffffff, 0.6 ))
 const light1 = new THREE.PointLight( 0xffffff, 10, 100 );
 
@@ -88,10 +88,32 @@ function updateLights(maze){
 // gg.userData.materials = meshes.map(m=>m.material)
 /// controls.panSpeed = 5
 
+// Constants
+const BALL_MASS = 1000
+const GLASSBODY_MASS = 99999999
+const GRAVITY_ACCELERATION = 10 // in cells
+const MAX_SPEED_MULTIPLIER = 0.20 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
+let BALL_RADIUS = 0.03 // UPDATED IN createBall() FUNCTION
+let MAX_SPEED  = 0; //UPDATED IN udpateModel() FUNCTION
+let BALL_FORCE = 0; //UPDATED IN updateModel() FUNCTION
+const DEFAULT_BODY_MATERIAL = new CANNON.Material({
+    friction: 0.25,
+    restitution: 0
+})
+const SENSITIVITY = 0.08
+const START = 'START'
+const END = 'END'
+const STARS_SIZE = 0.001
+const PARTICLE_COUNT = 10000
+const STARS_VELOCITY = 0.0001
+
+
 var ballMesh;
 var ballBody;
 var glassBody;
-
+var starsMesh
+var starGeo = new THREE.BufferGeometry();;
+var stars
 //TEST
 
 // scene.add(testMesh);
@@ -140,28 +162,9 @@ class Maze{
         createBall(this)
         createCubeBody(this)
 
-        addStars(200)
+        stars = addStars(PARTICLE_COUNT, this)
 	}
 }
-
-
-
-// Constants
-
-const BALL_MASS = 1000
-const GLASSBODY_MASS = 99999999
-const GRAVITY_ACCELERATION = 10 // in cells
-const MAX_SPEED_MULTIPLIER = 0.20 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
-let BALL_RADIUS = 0.03 // UPDATED IN createBall() FUNCTION
-let MAX_SPEED  = 0; //UPDATED IN udpateModel() FUNCTION
-let BALL_FORCE = 0; //UPDATED IN updateModel() FUNCTION
-const DEFAULT_BODY_MATERIAL = new CANNON.Material({
-    friction: 0.25,
-    restitution: 0
-})
-const SENSITIVITY = 0.08
-const START = 'START'
-const END = 'END'
 
 let isMouseDown = false;
 let isShiftPressed = false;
@@ -208,19 +211,71 @@ function renderBackground(scene){
 
 }
 
-function addStars(numStars) {
-    const geometry = new THREE.SphereGeometry(0.25, 24, 24);
-    const colors = [0xffffff, 0x00FFFF, 0x800080, 0xFFA500, 0xFF0000, 0xFFFF66]; // Colors: white, cyan, purple, orange, red, pale yellow
 
-    for (let i = 0; i < numStars; i++) {
-        const material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
-        const star = new THREE.Mesh(geometry, material);
 
-        let [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
-        star.position.set(x, y, z);
-        scene.add(star);
+
+
+function addStars(numStars, maze){
+    scene.remove(starsMesh)
+    const loader = new THREE.TextureLoader()
+    const starsTexture = loader.load('./assets/shrek.jpg')
+
+    const colors = [0xffffff, 0x0000ff, 0xff0000, 0xffff00];
+
+    const starsMaterial = new THREE.PointsMaterial({
+        size: STARS_SIZE,
+        transparent: false,
+        // blending: THREE.AdditiveBlending,
+    })
+    const starsGeometry = new THREE.BufferGeometry;
+    
+    const posArray = new Float32Array(PARTICLE_COUNT * 3)
+    const colorArray = [];
+    var threshold
+    for (let i = 0; i < numStars * 3; i ++) {
+        // X - width
+        if(i % 3 == 0){ 
+            threshold = maze.width / 19
+        }
+        // Y - height
+        else if(i % 3 == 1){
+            threshold = maze.height / 19
+        }
+        // Z - depth
+        else{
+            threshold = maze.depth / 19
+        }
+
+        do{
+            posArray[i] = (Math.random() - 0.5) * 100;
+        }while(Math.abs(posArray[i]) < threshold)
     }
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
+    starsMesh = new THREE.Points(starsGeometry, starsMaterial)
+    scene.add(starsMesh)
+    return starsMesh
 }
+
+function animateStars(starsMesh, velocity){
+    starsMesh.rotation.y += velocity;
+}
+// function addStars(numStars) {
+//     const geometry = new THREE.SphereGeometry(0.10, 24, 24);
+//     const colors = [0xffffff, 0x00FFFF, 0x800080, 0xFFA500, 0xFF0000, 0xFFFF66]; // Colors: white, cyan, purple, orange, red, pale yellow
+
+//     for (let i = 0; i < numStars; i++) {
+//         const material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+//         const star = new THREE.Mesh(geometry, material);
+
+//         let [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+//         star.position.set(x, y, z);
+//         scene.add(star);
+//     }
+// }
+
+
+
+
 
 // Function that gets the exact coordinates from start and end pos
 function getPosition(maze, type){
@@ -523,8 +578,8 @@ function updateBallMesh(){
 
 
 // Hide later only for debugging collisions
-const cannonDebugger = new CannonDebugger(scene, world, {
-})
+// const cannonDebugger = new CannonDebugger(scene, world, {
+// })
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -532,9 +587,11 @@ function animate() {
     updateBallMesh()
 
     updateMazeMesh();
+    animateStars(stars, STARS_VELOCITY)
 	renderer.render( scene, camera );
-    cannonDebugger.update()
+    // cannonDebugger.update()
 	// controls.update()
+    
     
 }
 animate();
