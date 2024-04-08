@@ -173,7 +173,8 @@ class Maze{
         BALL_FORCE = BALL_MASS * GRAVITY_ACCELERATION * this.cell_size;
         console.log("FORCE: "+BALL_FORCE)
 
-        MAX_SPEED  = GRAVITY_ACCELERATION * this.cell_size * MAX_SPEED_MULTIPLIER;
+        // MAX_SPEED  = GRAVITY_ACCELERATION * this.cell_size * MAX_SPEED_MULTIPLIER;
+        MAX_SPEED = 0;  
         console.log("MAX_SPEED: "+MAX_SPEED)
         createBall(this)
         createCubeBody(this)
@@ -599,11 +600,11 @@ function rotateCube(){
         const deltaX = (currX - prevX) *SENSITIVITY;
         const deltaY = (currY - prevY) * SENSITIVITY;
         
-        if(Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3){
-            prevX = currX;
-            prevY = currY;
-            return;
-        }
+        // if(Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3){
+        //     prevX = currX;
+        //     prevY = currY;
+        //     return;
+        // }
         var cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
 
@@ -642,7 +643,7 @@ function rotateCube(){
         glassBody.angularVelocity.set(0,0,0)
     }
 }
-
+let prevTime = 0;
 function update(){
     ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE, 0), ballBody.position)
     rotateCube()
@@ -660,8 +661,24 @@ function update(){
     ballBody.angularVelocity.copy(angularVelocity)
 
     glassBody.position.set(0,0,0);
-    world.step(1/60);
-
+    // const currTime = performance.now();
+    // if(prevTime ==0 ) prevTime = currTime
+    // const elapsed = (currTime - prevTime)/1000;
+    // let time = 0;
+    // while(time < elapsed){
+    //     world.step(Math.min(1/10000, elapsed - time))
+    //     time += 1/10000
+    // }
+    // prevTime = currTime
+    // for(let i = 0; i < 1000; i++){
+    //     world.step(1/60000)
+    // }
+    // console.log(1/60)
+    world.step(1/60)
+    // console.log(1/60000)
+    // world.fixedStep(1/)
+    updateMazeMesh()
+    updateBallMesh()
     
 
 }
@@ -718,7 +735,7 @@ function updateBallMesh(){
 // })
 
 function animate() {
-	requestAnimationFrame( animate );
+
     renderNebula();
     update();    
     updateBallMesh()
@@ -726,6 +743,7 @@ function animate() {
     updateMazeMesh();
     animateStars(stars, STARS_VELOCITY)
 	renderer.render( scene, camera );
+    requestAnimationFrame( animate );
     // cannonDebugger.update()
 	// controls.update()
     
