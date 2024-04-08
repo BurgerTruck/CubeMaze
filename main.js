@@ -18,8 +18,8 @@ const loader = new RGBELoader();
 
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
-const GRAVITY_ACCELERATION = 10 // in cells
-const MAX_SPEED_MULTIPLIER = 0.20 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
+const GRAVITY_ACCELERATION = 50 // in cells
+const MAX_SPEED_MULTIPLIER = 0.05 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
 let BALL_RADIUS = 0.03 // UPDATED IN createBall() FUNCTION
 let MAX_SPEED  = 0; //UPDATED IN udpateModel() FUNCTION
 let BALL_FORCE = 0; //UPDATED IN updateModel() FUNCTION
@@ -54,6 +54,10 @@ let currX, currY;
 let prevX, prevY; 
 
 const world = new CANNON.World();
+world.solver.iterations = 20
+world.quatNormalizeSkip = 0
+world.quatNormalizeFast = false
+world.solver.tolerance = 1
 
 controls.mouseButtons = {
 	RIGHT: THREE.MOUSE.ROTATE,
@@ -173,8 +177,8 @@ class Maze{
         BALL_FORCE = BALL_MASS * GRAVITY_ACCELERATION * this.cell_size;
         console.log("FORCE: "+BALL_FORCE)
 
-        // MAX_SPEED  = GRAVITY_ACCELERATION * this.cell_size * MAX_SPEED_MULTIPLIER;
-        MAX_SPEED = 0;  
+        MAX_SPEED  = GRAVITY_ACCELERATION * this.cell_size * MAX_SPEED_MULTIPLIER;
+        // MAX_SPEED = 0;  
         console.log("MAX_SPEED: "+MAX_SPEED)
         createBall(this)
         createCubeBody(this)
@@ -211,7 +215,7 @@ function loadHDREnvironmentMap() {
 
 const moonTexture = new THREE.TextureLoader().load('./assets/moon.jpg')
 const maze = new Maze()
-const hdrTexture = await loadHDREnvironmentMap();
+// const hdrTexture = await loadHDREnvironmentMap();
 $('#loading-screen').hide()
 
 
@@ -511,6 +515,7 @@ function createBall(maze){
         material: DEFAULT_BODY_MATERIAL,
         mass: BALL_MASS,
     })
+    
     ballBody.linearDamping = 0.9
     // Set position and quaternion of physics body accordingly
     ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
@@ -643,16 +648,29 @@ function rotateCube(){
         glassBody.angularVelocity.set(0,0,0)
     }
 }
-let prevTime = 0;
-function update(){
-    ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE, 0), ballBody.position)
-    rotateCube()
+let prevTime = -1;
+const fixedStep = 1/60
 
-    let speed = ballBody.velocity.norm()
-    if(speed> MAX_SPEED){
-        ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
-        speed = MAX_SPEED;
+function step(elapsed){
+    ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE*(elapsed/fixedStep), 0), ballBody.position)
+    let time = 0;
+    while(time < elapsed){
+        const step = Math.min(fixedStep, elapsed - time)
+        world.step(step)
+        let speed = ballBody.velocity.norm()
+        if(speed> MAX_SPEED){
+            ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
+        }
+        time+=step
     }
+}
+function update(){
+    rotateCube()
+    const currTime = performance.now();
+    const delta = prevTime == -1?0:(currTime - prevTime)/1000
+    step(delta)
+    
+    let speed = ballBody.velocity.norm()
     const angularSpeed = speed/BALL_RADIUS
     const angularVelocity = new THREE.Vector3()
     angularVelocity.crossVectors(ballBody.velocity, new CANNON.Vec3(0,1,0))
@@ -664,22 +682,10 @@ function update(){
     // const currTime = performance.now();
     // if(prevTime ==0 ) prevTime = currTime
     // const elapsed = (currTime - prevTime)/1000;
-    // let time = 0;
-    // while(time < elapsed){
-    //     world.step(Math.min(1/10000, elapsed - time))
-    //     time += 1/10000
-    // }
-    // prevTime = currTime
-    // for(let i = 0; i < 1000; i++){
-    //     world.step(1/60000)
-    // }
-    // console.log(1/60)
-    world.step(1/60)
-    // console.log(1/60000)
-    // world.fixedStep(1/)
+
     updateMazeMesh()
     updateBallMesh()
-    
+    prevTime = currTime
 
 }
 
@@ -702,10 +708,11 @@ document.addEventListener('mouseup', (event) => {
 });
 
 document.addEventListener('mousemove', (event)=>{
+    console.log("MOUSE MOVE ")
     // if(isMouseDown){
         currX = event.clientX;
         currY = event.clientY;
-    // }
+        // }
 });
 
 document.addEventListener('keydown', function(event){
@@ -735,6 +742,7 @@ function updateBallMesh(){
 // })
 
 function animate() {
+    console.log("ANIMATE")
 
     renderNebula();
     update();    
