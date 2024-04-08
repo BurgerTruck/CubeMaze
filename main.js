@@ -275,6 +275,13 @@ function loadNebula(){
     // scene.fog = new THREE.FogExp2(0x03544e, 0.001);
     // renderer.setClearColor(scene.fog.color)
 
+    if (nebulae.length > 0) {
+        nebulae.forEach(nebula => {
+            scene.remove(nebula); // Remove from scene
+        });
+        nebulae = []; // Clear the array
+    }
+
     const textureLoader = new THREE.TextureLoader();
     const colors = [0xd8547e, 0xD22B2B, 0x3677ac];
     var posY = 50
