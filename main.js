@@ -18,8 +18,8 @@ const loader = new RGBELoader();
 
 const BALL_MASS = 1000
 const GLASSBODY_MASS = 99999999
-const GRAVITY_ACCELERATION = 50 // in cells
-const MAX_SPEED_MULTIPLIER = 0.05 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
+const GRAVITY_ACCELERATION = 10 // in cells
+const MAX_SPEED_MULTIPLIER = 0 // MULTIPLED WITH GRAVITY_ACCELERATION TO GET MAX_SPEED
 let BALL_RADIUS = 0.03 // UPDATED IN createBall() FUNCTION
 let MAX_SPEED  = 0; //UPDATED IN udpateModel() FUNCTION
 let BALL_FORCE = 0; //UPDATED IN updateModel() FUNCTION
@@ -54,10 +54,10 @@ let currX, currY;
 let prevX, prevY; 
 
 const world = new CANNON.World();
-world.solver.iterations = 20
+world.solver.iterations = 1000
 world.quatNormalizeSkip = 0
 world.quatNormalizeFast = false
-world.solver.tolerance = 1
+// world.solver.tolerance = 100
 
 controls.mouseButtons = {
 	RIGHT: THREE.MOUSE.ROTATE,
@@ -515,8 +515,11 @@ function createBall(maze){
         material: DEFAULT_BODY_MATERIAL,
         mass: BALL_MASS,
     })
-    
-    ballBody.linearDamping = 0.9
+    ballBody.collisionFilterGroup = 1
+    ballBody.collisionFilterMask = 2
+    // ballBody.collisionResponse = true
+    ballBody.collisionResponse = false
+    // ballBody.linearDamping = 0.9
     // Set position and quaternion of physics body accordingly
     ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
     ballBody.quaternion.set(ballMesh.quaternion.x, ballMesh.quaternion.y, ballMesh.quaternion.z, ballMesh.quaternion.w)
@@ -563,9 +566,10 @@ function createCubeBody(maze){
 
     // Create the glass body
     glassBody = new CANNON.Body({
-        mass: GLASSBODY_MASS,
-        material: DEFAULT_BODY_MATERIAL
+        material: DEFAULT_BODY_MATERIAL,
+        type: CANNON.Body.KINEMATIC,
     });
+
     for(let i = 0; i < planePositions.length; i++){
         if(i==maze.end_cell.face){
             const boxHoleGroup = maze.boxHoleGroup;
@@ -594,12 +598,28 @@ function createCubeBody(maze){
     maze.walls.forEach(wall => {
         createWallShape(glassBody, wall)
     })
-
+    glassBody.collisionFilterGroup = 2
+    glassBody.collisionFilterMask = 1
+    glassBody.collisionResponse = true
     // Add the physics body to the world
     world.addBody(glassBody)    
 }
 
+function checkBallContacts(){
+    const contacts = world.contacts;
+    for (var j = 0; j < contacts.length; j++) {
+        var contact = contacts[j];
+        var bi = contact.bi;
 
+        var contactNormal = new CANNON.Vec3();
+        contactNormal = contact.ri; 
+        contactNormal.scale(-1, contactNormal);
+
+        var moveDistance = 0.01; // Adjust as needed
+        var moveDirection = contactNormal.scale(moveDistance);
+        bi.position.vadd(moveDirection, bi.position);
+    }
+}
 function rotateCube(){
     if(isMouseDown){
         const deltaX = (currX - prevX) *SENSITIVITY;
@@ -650,19 +670,47 @@ function rotateCube(){
 }
 let prevTime = -1;
 const fixedStep = 1/60
-
+const dividedStep = fixedStep/1000
 function step(elapsed){
-    ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE*(elapsed/fixedStep), 0), ballBody.position)
+    // ballBody.applyForce(new CANNON.Vec3(0, -BALL_FORCE*(elapsed/fixedStep), 0), ballBody.position)
     let time = 0;
-    while(time < elapsed){
-        const step = Math.min(fixedStep, elapsed - time)
-        world.step(step)
-        let speed = ballBody.velocity.norm()
-        if(speed> MAX_SPEED){
-            ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
-        }
-        time+=step
+    let speed = ballBody.velocity.norm()
+    if(speed> MAX_SPEED){
+        ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
     }
+    
+    // while(time < elapsed){
+    //     const step = Math.min(fixedStep, elapsed - time)
+    //     world.step(step)
+    //     time+=step
+    //     var contacts = world.contacts
+
+
+    // }
+    // world.step(fixedStep, fixedStep)
+    // world.step(fixedStep)
+
+
+    // let speed = ballBody.velocity.norm()
+    // if(speed> MAX_SPEED){
+    //     ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
+    // }
+
+
+
+
+    for(let i = 0; i < 1000; i++){
+        world.step(dividedStep)
+        checkBallContacts()
+
+    }
+
+    // let speed = ballBody.velocity.norm()
+    // if(speed> MAX_SPEED){
+    //     console.log(ballBody.velocity)
+    //     ballBody.velocity.scale(MAX_SPEED/speed, ballBody.velocity)
+    // }
+    // world.step(fixedStep, elapsed, 100)
 }
 function update(){
     rotateCube()
@@ -671,14 +719,16 @@ function update(){
     step(delta)
     
     let speed = ballBody.velocity.norm()
-    const angularSpeed = speed/BALL_RADIUS
-    const angularVelocity = new THREE.Vector3()
-    angularVelocity.crossVectors(ballBody.velocity, new CANNON.Vec3(0,1,0))
-    angularVelocity.normalize();
-    angularVelocity.multiplyScalar(angularSpeed)
-    ballBody.angularVelocity.copy(angularVelocity)
 
-    glassBody.position.set(0,0,0);
+    
+    // const angularSpeed = speed/BALL_RADIUS
+    // const angularVelocity = new THREE.Vector3()
+    // angularVelocity.crossVectors(ballBody.velocity, new CANNON.Vec3(0,1,0))
+    // angularVelocity.normalize();
+    // angularVelocity.multiplyScalar(angularSpeed)
+    // ballBody.angularVelocity.copy(angularVelocity)
+
+    // glassBody.position.set(0,0,0);
     // const currTime = performance.now();
     // if(prevTime ==0 ) prevTime = currTime
     // const elapsed = (currTime - prevTime)/1000;
@@ -718,6 +768,9 @@ document.addEventListener('mousemove', (event)=>{
 document.addEventListener('keydown', function(event){
     if(event.shiftKey)isShiftPressed = true;
     //listen for wasd key
+    if(event.key === 'w'){
+        ballBody.collisionResponse = !ballBody.collisionResponse
+    }
 
 });
 
