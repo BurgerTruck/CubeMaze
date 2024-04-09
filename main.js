@@ -726,6 +726,7 @@ function animate() {
     updateMazeMesh();
     animateStars(stars, STARS_VELOCITY)
 	renderer.render( scene, camera );
+    controls.update();
     // cannonDebugger.update()
 	// controls.update()
     
