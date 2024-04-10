@@ -48,7 +48,7 @@ function traverse(sideWalls, traversalInformation, planeIndex){
 		const row = indices[0]
 		const col = indices[1]
 		list.push(walls[row][col])
-
+		// walls[row][col].isRemoved = true
 		indices[0]+=step[0]
 		indices[1]+=step[1]
 	}
@@ -62,6 +62,7 @@ function isFirstRemoved(sideWalls, traversalInformations, i, planeIndex){
 
 	let firstWall = walls[indices[0]][indices[1]]
 	return firstWall.isRemoved || firstWall.face!=wallIndex 
+	// return true
 }
 function getWallBoxes(width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled, offsets){
 	let reversed = false;
@@ -295,69 +296,43 @@ function createGlassMesh(width, height, depth,hole = {x: 0, y: 0, radius: 0.0}, 
 	return {mesh, holeMesh};
 }
 
-function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, quadRadius = 0.001, sideWalls, planeIndex, traversalInformations = null, bevelEnabled, offsets = [0,0,0,0]) {
+function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness,distance_between_walls, segments = 20, sideWalls, planeIndex, traversalInformations = null, bevelEnabled, offsets = [0,0,0,0]) {
 	let shape = new THREE.Shape();
-	// const startX = radius
-	// const startY = radius
-	// const endX = width - radius
-	// const endY = height -radius
+	const eps =  bevelEnabled?0.005:0
+	const startX = 0 + eps
+	const startY = 0 + eps
+	const endX = width - eps
+	const endY = height - eps
 
-	const startX = 0
-	const startY = 0
-	const endX = width
-	const endY = height
-	const eps = 0.0001
-	// const eps = bevelEnabled?0.00001:0
-	// quadRadius = 0
-	// console.log("RADIUOS: "+ quadRadius + radius)
-	// let radius  = bevelEnabled?wallThickness/2:0
+
 	let radius = bevelEnabled?0.005:0
-	const outerQuadRadius = wallHeight + quadRadius - eps-radius
-	// const outerQuadRadius = 0
-	// radius = radius - eps
-
-	let e = [eps, - eps, -eps, eps]
-	let wallInside = [startX +wallHeight + eps, endY - wallHeight - eps, endX - wallHeight - eps, startY +wallHeight + eps]
+	const outerQuadRadius = wallHeight 
+	
+	let wallInside = [startX +wallHeight , endY - wallHeight  , endX - wallHeight  , startY +wallHeight  ]
 	let wallOutside = [startX, endY, endX,startY ]
 	
-	let innerCorners = [[startX+wallHeight, endY - wallHeight ], [endX - wallHeight , endY - wallHeight], [endX - wallHeight , wallHeight ], [wallHeight, wallHeight]]
-	let innerQuadCurveFrom = [[startX + wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , endY - wallHeight ], [endX - wallHeight +eps, wallHeight+quadRadius ], [wallHeight+quadRadius , wallHeight-eps]]
-	let innerQuadCurveTo = [[startX + wallHeight + quadRadius , endY - wallHeight+eps ], [endX - wallHeight , endY - wallHeight-quadRadius ], [endX - wallHeight-quadRadius , wallHeight ], [wallHeight , wallHeight+quadRadius ]]
-	
+	let innerCorners = [[wallInside[0], wallInside[1] ], [wallInside[2] , wallInside[1]], [wallInside[2], wallInside[3] ], [wallInside[0], wallInside[3]]]
+
 	let outerCorners = [[startX, endY], [endX, endY], [endX, startY], [startX, startY]]	
 	let quadCurveFrom = [[startX, endY-outerQuadRadius], [endX - outerQuadRadius, endY], [endX, startY + outerQuadRadius], [startX + outerQuadRadius, startY]]
-	let quadCurveTo = [[startX + outerQuadRadius, endY], [endX, endY - outerQuadRadius], [endX - outerQuadRadius, startY], [startX, startY + outerQuadRadius+eps]]
-	
-	// console.log("QUAD RADIIUS: "+quadRadius)
-	// console.log(innerQuadCurveFrom[0])
-	// console.log(innerQuadCurveTo[0])
-	// console.log(innerCorners[0])
+	let quadCurveTo = [[startX + outerQuadRadius, endY], [endX, endY - outerQuadRadius], [endX - outerQuadRadius, startY], [startX, startY + outerQuadRadius]]
 
-	let starts = [[startX, wallHeight+quadRadius ], [startX + wallHeight + quadRadius, endY], [endX, endY - wallHeight-quadRadius], [endX - wallHeight-quadRadius , startY]]
-	let ends = [[startX, endY - wallHeight-quadRadius], [endX - wallHeight-quadRadius, endY], [endX,  wallHeight+quadRadius], [wallHeight+quadRadius, startY]]
+	let starts = [[startX, startY+  wallHeight ], [startX + wallHeight , endY], [endX, endY - wallHeight], [endX - wallHeight , startY]]
+	let ends = [[startX, endY - wallHeight], [endX - wallHeight, endY], [endX,  wallHeight], [wallHeight, startY]]
 	
 	let reversed = false
-	//index is index of plane
-	//i is index of face 
-
 	let currX = starts[0][0]
 	let currY = starts[0][1]
     shape.moveTo(currX, currY);
-	// console.log(traversalInformations)
 
 	let currRemoved = false
 	let prevRemoved = false
 	if(isFirstRemoved(sideWalls, traversalInformations, 0, planeIndex)){
 		currRemoved = true;
 		currX = wallInside[0]
-		// currX = wallHeight
-		// currY = wallHeight
 		shape.moveTo(currX, currY)
 	}
-	// console.log("START: "+currX, currY)	
 	let isSideExtended = [false, false, false, false]
-	// console.log("START X: " + currX + "START Y: "+currY)
-	// console.log("FIRST WALL INSIDE X: "+wallInside[0])
 	for(let i = 0; i < 4; i++){
 		const wallIndex = traversalInformations[i].wallIndex
 		let walls = traverse(sideWalls, traversalInformations[i], planeIndex )
@@ -376,23 +351,21 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 			}
 			if(!currRemoved)isSideExtended[i] = true
 			if(prevRemoved!=currRemoved){
-				let radiusAdd = 0
+				let radiusAdd = eps
 				radiusAdd = i>=2?radius:-radius
-				radiusAdd = currRemoved?radiusAdd:-radiusAdd
-				
+				radiusAdd = currRemoved?-radiusAdd:+radiusAdd
 				let offset = offsets[i]
 				if(offset!=0){
 					offset = offset * wallThickness/2;
 				}
-
+				// offset = 0
 				if(reversed)shape.lineTo(currX + radiusAdd + offset, currY)
 				else shape.lineTo(currX, currY + radiusAdd + offset)
-				
 				if(currRemoved){
 					if(!reversed){
-						currX = wallInside[i] + e[i]
+						currX = wallInside[i] 
 					}else{
-						currY = wallInside[i]+ e[i]
+						currY = wallInside[i]
 					}
 
 				}else{
@@ -421,32 +394,15 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 		const nextFirstRemoved = isFirstRemoved(sideWalls, traversalInformations, nextIndex, planeIndex)
 		if(currRemoved && nextFirstRemoved){
 
-			currX = innerQuadCurveFrom[i][0]
-			currY = innerQuadCurveFrom[i][1]
-			// if(i==3){
-			// 	console.log("QUAD CURVING FROM : "+currX + " CURRY: "+currY)
-			// }
+			currX = innerCorners[i][0]
+			currY = innerCorners[i][1]
 			shape.lineTo(currX, currY)
-			
-			currX = innerQuadCurveTo[i][0]
-			currY = innerQuadCurveTo[i][1]
-			shape.quadraticCurveTo(innerCorners[i][0], innerCorners[i][1], currX, currY)
-			// if(i==3){
-			// 	console.log("QUAD CURVING TO : "+currX + " CURRY: "+currY)
-			// }
 		}else{
 			if(currRemoved){
-				let radiusAdd = radius
-				radiusAdd = i>=2?-radius:+radius
-				currX = innerQuadCurveFrom[i][0]
-				currY = innerQuadCurveFrom[i][1]
-				if( reversed)shape.lineTo(currX  +  radiusAdd, currY)
-				else shape.lineTo(currX, currY + radiusAdd)
-				currX = ends[i][0]
-				currY = ends[i][1]
-				if( reversed)shape.lineTo(currX  +  radiusAdd, currY)
-				else shape.lineTo(currX, currY + radiusAdd)
-			}
+				currX = innerCorners[i][0]
+				currY = innerCorners[i][1]
+				shape.lineTo(currX, currY)
+			}	
 			currX = quadCurveFrom[i][0]
 			currY = quadCurveFrom[i][1]
 			shape.lineTo(currX, currY)
@@ -454,11 +410,9 @@ function createMazeWallGeometry( width, height, depth, wallHeight, wallThickness
 			currX = quadCurveTo[i][0]
 			currY = quadCurveTo[i][1]
 			shape.quadraticCurveTo(outerCorners[i][0], outerCorners[i][1], currX, currY)
-			let radiusAdd  = nextIndex>=2?radius:-radius
 			currX = starts[nextIndex][0]
 			currY = starts[nextIndex][1]
-			if( !reversed)shape.lineTo(currX  +  radiusAdd, currY)
-			else shape.lineTo(currX, currY + radiusAdd)
+			shape.lineTo(currX, currY)
 	
 			isSideExtended[i] = true
 			isSideExtended[nextIndex] = true
@@ -503,7 +457,7 @@ function createBaseCubeMesh( width, height, depth, radius = 0.1, color) {
 	return mesh
 }
 function createWallMesh(width, height, depth, wall_height,wallThickness, radius, distance_between_walls, sideWalls, index, traversalInformations, bevelEnabled, color, offsets, boxOffsets = [0,0,0,0] ) {
-	const geometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled,offsets )
+	const geometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, sideWalls, index, traversalInformations, bevelEnabled,offsets )
 	// const collisionGeometry = createMazeWallGeometry( width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, true)
 	const boxes = getWallBoxes(width, height, depth,wall_height,wallThickness,distance_between_walls, 32, radius, sideWalls, index, traversalInformations, bevelEnabled, boxOffsets)
 	const material = new THREE.MeshPhysicalMaterial( { color: color, metalness: 0.42, roughness:0.60,wireframe:false } );
@@ -530,7 +484,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 
 	// console.log("DEPTH: "+depth)
 
-	const distance_between_walls = cell_size
+	let distance_between_walls = cell_size
 
 	const group = new THREE.Group()
 	const padding = wall_thickness*2
@@ -565,7 +519,7 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 		{wallIndex: 3, reverseTraversal: true, vertical: true, reversePlaneIndex: false},
 		{wallIndex: 0, reverseTraversal: true, vertical: false, reversePlaneIndex: true}];
 	
-	let startZ = -effective_depth/2 + wall_thickness/2
+	let startZ = -effective_depth/2
 
 	// group.add(cube)
 	let holeRadius = (cell_size - wall_thickness) * 0.8/2
@@ -576,22 +530,24 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 	
 
 	function getHole(row, col){
-		return { x: glassStart + col * distance_between_walls + cell_size/2,y: glassStart + row * distance_between_walls + cell_size/2, radius: cell_size/2}
+		return { x: glassStart + col * distance_between_walls + cell_size/	2,y: glassStart + row * distance_between_walls + cell_size/2, radius: cell_size/2}
 	}
 
 	// maze.end.face = 5;
 	// maze.end.position = [0,0]
 	let boxHoleGroup = new THREE.Group()
-	let eps = 0.01 +wall_thickness/2
+	let eps = 0
+	const bevelRadius = bevelEnabled?0.005:0
 	{
-		const mesh_width = total_width + wall_height*2 + glass_thickness
-		const mesh_height = total_height + wall_height*2 +  glass_thickness
+		// distance_between_walls = cell_size - wall_thickness/(depth-1)
+		const mesh_width = total_width + wall_height*2 + wall_thickness 
+		const mesh_height = total_height + wall_height*2 +  wall_thickness   
 		for(let i = 0; i <= depth	; i++){
 			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, zWallOrder, bevelEnabled, color, [2,2,0,0])	
 			// console.log(wall)
 			mesh.position.z = startZ- (i==0?eps:0)
-			group.add(mesh)	
-
+			// if(i == 0 )group.add(mesh)	
+			group.add(mesh)
 			boxes.position.copy(mesh.position)
 			startZ += distance_between_walls
 			boxes.traverse(function(e){
@@ -636,150 +592,154 @@ function createMazeCubeGroup(width, height, depth, radiusPercent = 0, wall_heigh
 			holeMeshPos. position.z = startZ + half_glass_thickness;	
 			group.add(holeMeshPos);
 		} 
-		group.add(glassMeshNeg)
-		group.add(glassMeshPos)
+		// group.add(glassMeshNeg)
+		// group.add(glassMeshPos)
 
 	}
 
-	let startX = -effective_width/2 + wall_thickness/2
-	{
-		const mesh_width = total_depth + wall_height*2 + glass_thickness
-		const mesh_height = total_height + wall_height*2 + glass_thickness
-		for(let i = 0; i <= width; i++){
+	// let startX = -effective_width/2
+	// {
+	// 	// distance_between_walls = cell_size - wall_thickness/(width-1)
+	// 	const mesh_width = total_depth + wall_height*2 + wall_thickness 
+	// 	const mesh_height = total_height + wall_height*2 + wall_thickness  
+	// 	for(let i = 0; i <= width; i++){
 		
-			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color, [2,0,0,-2], [0, -1, 0, -1])	
+	// 		const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,  distance_between_walls, sideWalls, i, xWallOrder, bevelEnabled, color, [2,0,0,-2], [0, -1, 0, -1])	
 
-			mesh.rotateY(Math.PI/2)
-			mesh.position.x = startX - (i==0?eps:0)
-			group.add(mesh)
-			boxes.rotateY(Math.PI/2)
-			boxes.position.copy(mesh.position)
+	// 		mesh.rotateY(Math.PI/2)
+	// 		mesh.position.x = startX - (i==0?eps:0)
+	// 		// if(i == 0)group.add(mesh)
+	// 		group.add(mesh)
+	// 		boxes.rotateY(Math.PI/2)
+	// 		boxes.position.copy(mesh.position)
+			
 
 
+	// 		startX += distance_between_walls
+	// 		boxes.traverse(function(e){
+	// 			if(e instanceof THREE.Mesh){
+	// 				e.quaternion.copy(mesh.quaternion)
+	// 				walls.push(e)
+	// 			}
+	// 		})
+	// 	}
 
-			startX += distance_between_walls
-			boxes.traverse(function(e){
-				if(e instanceof THREE.Mesh){
-					e.quaternion.copy(mesh.quaternion)
-					walls.push(e)
-				}
-			})
-		}
-
-		let holeNeg = { x: 0, y: 0, radius: 0.0}
-		let holePos = { x: 0, y: 0, radius: 0.0}	
-		const boxHoleDepth = total_width + 2* wall_height
-		if(maze.end.face==1){
-			const row = height - maze.end.position[1]-1;
-			const col = depth - maze.end.position[0] - 1;
-			holeNeg = getHole(row, col)
-			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth , holeNeg )
-			boxHoleGroup.position.x = -startX - (boxHoleDepth)/2
-			boxHoleGroup.rotateY(Math.PI/2)
-		}else if(maze.end.face == 3){
-			const row = maze.end.position[1];
-			const col = depth - maze.end.position[0] - 1;
-			holePos = getHole(row, col)
-			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
-			boxHoleGroup.position.x = startX + (boxHoleDepth)/2
-			boxHoleGroup.rotateY(Math.PI/2)
-		}
-		const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
-		const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
+	// 	let holeNeg = { x: 0, y: 0, radius: 0.0}
+	// 	let holePos = { x: 0, y: 0, radius: 0.0}	
+	// 	const boxHoleDepth = total_width + 2* wall_height
+	// 	if(maze.end.face==1){
+	// 		const row = height - maze.end.position[1]-1;
+	// 		const col = depth - maze.end.position[0] - 1;
+	// 		holeNeg = getHole(row, col)
+	// 		boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth , holeNeg )
+	// 		boxHoleGroup.position.x = -startX - (boxHoleDepth)/2
+	// 		boxHoleGroup.rotateY(Math.PI/2)
+	// 	}else if(maze.end.face == 3){
+	// 		const row = maze.end.position[1];
+	// 		const col = depth - maze.end.position[0] - 1;
+	// 		holePos = getHole(row, col)
+	// 		boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
+	// 		boxHoleGroup.position.x = startX + (boxHoleDepth)/2
+	// 		boxHoleGroup.rotateY(Math.PI/2)
+	// 	}
+	// 	const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
+	// 	const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
 		
-		const glassMeshNeg = neg.mesh;
-		const holeMeshNeg = neg.holeMesh;
-		const glassMeshPos = pos.mesh;
-		const holeMeshPos = pos.holeMesh;
+	// 	const glassMeshNeg = neg.mesh;
+	// 	const holeMeshNeg = neg.holeMesh;
+	// 	const glassMeshPos = pos.mesh;
+	// 	const holeMeshPos = pos.holeMesh;
 
-		glassMeshPos.position.x = startX + half_glass_thickness
-		glassMeshNeg.position.x = -startX  - half_glass_thickness
+	// 	glassMeshPos.position.x = startX + half_glass_thickness
+	// 	glassMeshNeg.position.x = -startX  - half_glass_thickness
 		
-		if(holeMeshNeg!=null){
-			holeMeshNeg.position.x = -startX  - half_glass_thickness
-			holeMeshNeg.rotateY(Math.PI/2)
-			group.add(holeMeshNeg)
-		}
-		if(holeMeshPos!=null){
-			holeMeshPos.position.x = startX + half_glass_thickness
-			holeMeshPos.rotateY(Math.PI/2)
-			group.add(holeMeshPos)
-		}
+	// 	if(holeMeshNeg!=null){
+	// 		holeMeshNeg.position.x = -startX  - half_glass_thickness
+	// 		holeMeshNeg.rotateY(Math.PI/2)
+	// 		group.add(holeMeshNeg)
+	// 	}
+	// 	if(holeMeshPos!=null){
+	// 		holeMeshPos.position.x = startX + half_glass_thickness
+	// 		holeMeshPos.rotateY(Math.PI/2)
+	// 		group.add(holeMeshPos)
+	// 	}
 		
 
-		glassMeshNeg.rotateY(Math.PI/2)
-		glassMeshPos.rotateY(Math.PI/2)
-		group.add(glassMeshNeg)
-		group.add(glassMeshPos)
-	}
+	// 	glassMeshNeg.rotateY(Math.PI/2)
+	// 	glassMeshPos.rotateY(Math.PI/2)
+	// 	// group.add(glassMeshNeg)
+	// 	// group.add(glassMeshPos)
+	// }
 
-	{
-		const mesh_width = total_width + wall_height*2 + glass_thickness
-		const mesh_height = total_depth + wall_height*2 + glass_thickness
-		let startY = -effective_height/2 +  wall_thickness/2
-		for(let i = 0; i <= height; i++){
+	// {
+	// 	// distance_between_walls = cell_size - wall_thickness/(height-1)
+	// 	const mesh_width = total_width + wall_height*2 + wall_thickness  
+	// 	const mesh_height = total_depth + wall_height*2 + wall_thickness  
+	// 	let startY = -effective_height/2 
+	// 	for(let i = 0; i <= height; i++){
 		
-			const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color, [2,2,0,0])	
-			mesh.rotateX(Math.PI/2)
-			mesh.position.y = startY	- (i==0?eps:0) 
-			group.add(mesh)
+	// 		const {mesh, boxes} = createWallMesh(mesh_width, mesh_height, wall_thickness, wall_height,wall_thickness,radius,distance_between_walls, sideWalls, i, yWallOrder, bevelEnabled, color, [2,2,0,0])	
+	// 		mesh.rotateX(Math.PI/2)
+	// 		mesh.position.y = startY	- (i==0?eps:0) 
 
-			boxes.position.copy(mesh.position)
-			boxes.rotateX(Math.PI/2)	
-			startY += distance_between_walls
-			boxes.traverse(function(e){
-				if(e instanceof THREE.Mesh){
-					e.quaternion.copy(mesh.quaternion)
-					walls.push(e)
-				}
-			})
-		}
-		let holeNeg = { x: 0, y: 0, radius: 0.0}
-		let holePos = { x: 0, y: 0, radius: 0.0}		
-		const boxHoleDepth =total_height + 2*wall_height
-		if(maze.end.face==2){
-			const row = maze.end.position[0];
-			const col = maze.end.position[1];
-			holeNeg = getHole(row, col)
-			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holeNeg)
-			boxHoleGroup.position.y = -startY - (boxHoleDepth)/2
-			boxHoleGroup.rotateX(Math.PI/2)
-		}else if(maze.end.face == 5){
-			const row = depth - maze.end.position[0]-1;
-			const col = maze.end.position[1];
-			holePos = getHole(row, col)
-			boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
-			boxHoleGroup.position.y = startY + (boxHoleDepth)/2
-			boxHoleGroup.rotateX(Math.PI/2)
-		}
-		const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
-		const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
+	// 		// if(i == 0 )group.add(mesh)
+	// 		group.add(mesh)
+	// 		boxes.position.copy(mesh.position)
+	// 		boxes.rotateX(Math.PI/2)	
+	// 		startY += distance_between_walls
+	// 		boxes.traverse(function(e){
+	// 			if(e instanceof THREE.Mesh){
+	// 				e.quaternion.copy(mesh.quaternion)
+	// 				walls.push(e)
+	// 			}
+	// 		})
+	// 	}
+	// 	let holeNeg = { x: 0, y: 0, radius: 0.0}
+	// 	let holePos = { x: 0, y: 0, radius: 0.0}		
+	// 	const boxHoleDepth =total_height + 2*wall_height
+	// 	if(maze.end.face==2){
+	// 		const row = maze.end.position[0];
+	// 		const col = maze.end.position[1];
+	// 		holeNeg = getHole(row, col)
+	// 		boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holeNeg)
+	// 		boxHoleGroup.position.y = -startY - (boxHoleDepth)/2
+	// 		boxHoleGroup.rotateX(Math.PI/2)
+	// 	}else if(maze.end.face == 5){
+	// 		const row = depth - maze.end.position[0]-1;
+	// 		const col = maze.end.position[1];
+	// 		holePos = getHole(row, col)
+	// 		boxHoleGroup = createRectanglesWithHoleGroup(mesh_width + size_offset, mesh_height + size_offset, boxHoleDepth, holePos)
+	// 		boxHoleGroup.position.y = startY + (boxHoleDepth)/2
+	// 		boxHoleGroup.rotateX(Math.PI/2)
+	// 	}
+	// 	const neg = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holeNeg, 8, hdrTexture, color)
+	// 	const pos = createGlassMesh(mesh_width + size_offset, mesh_height + size_offset, glass_thickness, holePos, 8, hdrTexture, color)
 		
-		const glassMeshNeg = neg.mesh;
-		const holeMeshNeg = neg.holeMesh;
-		const glassMeshPos = pos.mesh;
-		const holeMeshPos = pos.holeMesh;
+	// 	const glassMeshNeg = neg.mesh;
+	// 	const holeMeshNeg = neg.holeMesh;
+	// 	const glassMeshPos = pos.mesh;
+	// 	const holeMeshPos = pos.holeMesh;
 		
-		glassMeshPos.position.y = startY + half_glass_thickness
-		glassMeshNeg.position.y = -startY  - half_glass_thickness
+	// 	glassMeshPos.position.y = startY + half_glass_thickness
+	// 	glassMeshNeg.position.y = -startY  - half_glass_thickness
 		
-		if(holeMeshNeg!=null){
-			holeMeshNeg.position.y = -startY  - half_glass_thickness
-			holeMeshNeg.rotateX(Math.PI/2)
-			group.add(holeMeshNeg)
-		}
+	// 	if(holeMeshNeg!=null){
+	// 		holeMeshNeg.position.y = -startY  - half_glass_thickness
+	// 		holeMeshNeg.rotateX(Math.PI/2)
+	// 		group.add(holeMeshNeg)
+	// 	}
 
-		if(holeMeshPos!=null){
-			holeMeshPos.position.y = startY + half_glass_thickness
-			holeMeshPos.rotateX(Math.PI/2)
-			group.add(holeMeshPos)
-		}
+	// 	if(holeMeshPos!=null){
+	// 		holeMeshPos.position.y = startY + half_glass_thickness
+	// 		holeMeshPos.rotateX(Math.PI/2)
+	// 		group.add(holeMeshPos)
+	// 	}
 
-		glassMeshNeg.rotateX(Math.PI/2)
-		glassMeshPos.rotateX(Math.PI/2)
-		group.add(glassMeshNeg)
-		group.add(glassMeshPos)
-	}
+	// 	glassMeshNeg.rotateX(Math.PI/2)
+	// 	glassMeshPos.rotateX(Math.PI/2)
+	// 	// group.add(glassMeshNeg)
+	// 	// group.add(glassMeshPos)
+	// }
 	walls.push(cube)
 	return {
 		group: group,

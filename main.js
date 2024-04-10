@@ -133,7 +133,7 @@ function updateLights(maze){
     console.log(light1.position)
 }
 class Maze{
-	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.01, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
+	constructor(width = 9, height = 9, depth = 9, radiusPercent = 0, wall_thickness = 0.03, cell_size = 0.1, bevelEnabled = true, color = '#00FFFF'){
 		this.width = width
 		this.height = height
 		this.depth = depth
@@ -210,7 +210,7 @@ function loadHDREnvironmentMap() {
 
 const moonTexture = new THREE.TextureLoader().load('./assets/moon.jpg')
 const maze = new Maze()
-const hdrTexture = await loadHDREnvironmentMap();
+// const hdrTexture = await loadHDREnvironmentMap();
 $('#loading-screen').hide()
 
 
